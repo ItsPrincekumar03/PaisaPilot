@@ -1,0 +1,192 @@
+/* ---------- Auth pages ---------- */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: linear-gradient(180deg, var(--color-primary-soft) 0%, var(--color-bg) 60%);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.auth-card__app {
+  font-weight: 700;
+  color: var(--color-primary-strong);
+}
+
+.auth-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-form .button {
+  align-self: stretch;
+}
+
+.auth-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.auth-links a {
+  color: var(--color-primary-strong);
+  font-weight: 600;
+}
+
+.auth-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Form fields ---------- */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.form-field label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.form-field input {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-field input[aria-invalid='true'] {
+  border-color: var(--color-expense);
+}
+
+.form-field__hint,
+.form-field__error {
+  font-size: var(--font-size-sm);
+}
+
+.form-field__hint {
+  color: var(--color-text-muted);
+}
+
+.form-field__error {
+  color: var(--color-expense-text);
+}
+
+.form-message {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.form-message--error {
+  background: #FFF1F0;
+  border: 1px solid var(--color-expense);
+  color: var(--color-expense-text);
+}
+
+.form-message--success {
+  background: #E3F5EB;
+  border: 1px solid var(--color-income);
+  color: var(--color-income-text);
+}
+
+/* ---------- Buttons (additions) ---------- */
+.button:disabled,
+.button:disabled:hover {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--color-primary);
+}
+
+.button--secondary {
+  background: var(--color-primary-soft);
+  color: var(--color-primary-strong);
+}
+
+.button--secondary:hover {
+  background: #DCD6FF;
+}
+
+/* ---------- Header actions ---------- */
+.app-header__actions {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.app-header__actions .form-message {
+  padding: var(--space-1) var(--space-2);
+}
+
+/* ---------- Password visibility toggle ---------- */
+.password-field__input-wrap {
+  position: relative;
+}
+
+.password-field__input-wrap input {
+  padding-right: 2.75rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.password-field__toggle:hover {
+  color: var(--color-primary-strong);
+  background: var(--color-primary-soft);
+}
+
+.password-field__toggle:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
