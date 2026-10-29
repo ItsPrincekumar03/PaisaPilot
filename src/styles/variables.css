@@ -1,0 +1,52 @@
+:root {
+  /* Brand and palette */
+  --color-primary: #7657E8;
+  --color-primary-strong: #5B3FCC;
+  --color-primary-soft: #EAE7FF;
+  --color-income: #36A66B;
+  --color-income-text: #23784A;
+  --color-expense: #F16D65;
+  --color-expense-text: #B23F38;
+  --color-amber: #F3B544;
+  --color-amber-text: #7A5300;
+  --color-teal: #2AAEAA;
+  --color-teal-text: #1E7F7C;
+  --color-pink: #E66BA8;
+
+  /* Surfaces and text */
+  --color-bg: #F6F5FD;
+  --color-surface: #FFFFFF;
+  --color-text: #25243A;
+  --color-text-muted: #5C5975;
+  --color-border: #E3E0F2;
+  --color-focus: #5B3FCC;
+  --color-demo-bg: #FFF6DC;
+  --color-demo-border: #F3B544;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 1.875rem;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+
+  /* Radii and shadows */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(37, 36, 58, 0.06), 0 4px 16px rgba(37, 36, 58, 0.06);
+
+  /* Layout */
+  --sidebar-width: 260px;
+  --transition-base: 200ms ease;
+}
