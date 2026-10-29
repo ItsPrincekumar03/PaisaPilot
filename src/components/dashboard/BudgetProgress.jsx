@@ -1,8 +1,9 @@
+import { NavLink } from 'react-router-dom';
 import EmptyState from '../common/EmptyState.jsx';
 import { formatINR } from '../../utils/currency.js';
 import { getBudgetStatus } from '../../utils/financeCalculations.js';
 
-export default function BudgetProgress({ limitPaise, spentPaise }) {
+export default function BudgetProgress({ limitPaise, spentPaise = 0 }) {
   const budget = getBudgetStatus(limitPaise, spentPaise);
 
   if (budget.status === 'none') {
@@ -10,7 +11,11 @@ export default function BudgetProgress({ limitPaise, spentPaise }) {
       <EmptyState
         title="No monthly budget set"
         message="A monthly limit will appear here once budgets are configured."
-      />
+      >
+        <NavLink to="/budgets" className="button button--secondary">
+          Configure budget
+        </NavLink>
+      </EmptyState>
     );
   }
 
@@ -59,6 +64,11 @@ export default function BudgetProgress({ limitPaise, spentPaise }) {
           <dd>{roundedUsage}%</dd>
         </div>
       </dl>
+      <div className="budget-progress__footer">
+        <NavLink to="/budgets" className="button button--secondary">
+          Manage budgets →
+        </NavLink>
+      </div>
     </div>
   );
 }
