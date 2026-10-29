@@ -1,15 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import PlaceholderPage from '../components/common/PlaceholderPage.jsx';
 
-export function TransactionsPage() {
-  return (
-    <PlaceholderPage
-      moduleLabel="Planned · Module 5"
-      description="Transaction add, edit, delete, search and filters will be built in Module 5. This page shows no transactions yet."
-    />
-  );
-}
-
 export function BudgetsPage() {
   return (
     <PlaceholderPage

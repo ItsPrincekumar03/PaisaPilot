@@ -1,17 +1,17 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout.jsx';
 import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
+import TransactionsPage from '../pages/transactions/TransactionsPage.jsx';
+import LoginPage from '../pages/auth/Login.jsx';
+import RegisterPage from '../pages/auth/Register.jsx';
+import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
 import {
-  TransactionsPage,
   BudgetsPage,
   ReportsPage,
   ProfilePage,
   AdminPage,
   NotFoundPage,
 } from '../pages/PlaceholderPages.jsx';
-import LoginPage from '../pages/auth/Login.jsx';
-import RegisterPage from '../pages/auth/Register.jsx';
-import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
 import ProtectedRoute from '../features/auth/ProtectedRoute.jsx';
 import PublicOnlyRoute from '../features/auth/PublicOnlyRoute.jsx';
 

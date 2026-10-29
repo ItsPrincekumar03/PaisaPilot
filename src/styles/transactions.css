@@ -1,0 +1,110 @@
+.transactions-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.transactions-page__intro h2 {
+  margin: 0 0 4px;
+}
+
+.transactions-page__intro p {
+  margin: 0;
+  color: #6b6883;
+}
+
+.transactions-page__count {
+  margin: 0;
+  color: #6b6883;
+  font-size: 0.9rem;
+}
+
+.transaction-filters h3 {
+  margin: 0 0 12px;
+}
+
+.transaction-filters__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+}
+
+.transaction-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.transaction-field--wide {
+  grid-column: 1 / -1;
+}
+
+.transaction-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.transaction-field input,
+.transaction-field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #c9c5dd;
+  border-radius: 8px;
+  font: inherit;
+  background: #fff;
+}
+
+.transaction-field input[aria-invalid='true'],
+.transaction-field select[aria-invalid='true'] {
+  border-color: #c0392b;
+}
+
+.transaction-field__error {
+  color: #c0392b;
+  font-size: 0.85rem;
+}
+
+.transaction-filters__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.active-filters__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.active-filters__chip {
+  border: 1px solid #c9c5dd;
+  background: #f5f3fc;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.active-filters__chip:hover,
+.active-filters__chip:focus-visible {
+  border-color: #7657e8;
+  outline: none;
+}
+
+.transaction-list--full {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (max-width: 600px) {
+  .transaction-filters__grid {
+    grid-template-columns: 1fr;
+  }
+}
