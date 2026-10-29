@@ -61,8 +61,13 @@ service cloud.firestore {
       return value is string && value.matches('^#[0-9A-Fa-f]{6}$');
     }
 
-    function profileFields() {
+    function requiredProfileFields() {
       return ['displayName', 'email', 'currency', 'theme', 'accountStatus', 'createdAt', 'updatedAt'];
+    }
+
+    // "language" is optional so profiles created before Module 4 remain valid.
+    function profileFields() {
+      return ['displayName', 'email', 'currency', 'theme', 'language', 'accountStatus', 'createdAt', 'updatedAt'];
     }
 
     function transactionFields() {
@@ -79,11 +84,12 @@ service cloud.firestore {
 
     function isValidProfileContent(data) {
       return data.keys().hasOnly(profileFields())
-        && data.keys().hasAll(profileFields())
-        && isText(data.displayName, 80)
+        && data.keys().hasAll(requiredProfileFields())
+        && isNonEmptyText(data.displayName, 80)
         && data.email == request.auth.token.email
-        && data.currency == 'INR'
-        && data.theme in ['light', 'dark', 'system'];
+        && data.currency in ['INR', 'USD', 'EUR', 'GBP']
+        && data.theme in ['light', 'dark', 'system']
+        && (!('language' in data) || data.language in ['en']);
     }
 
     function isValidTransaction(data) {

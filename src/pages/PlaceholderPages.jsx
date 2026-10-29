@@ -19,15 +19,6 @@ export function ReportsPage() {
   );
 }
 
-export function ProfilePage() {
-  return (
-    <PlaceholderPage
-      moduleLabel="Planned · Module 4"
-      description="Profile details, currency and theme preferences will be built in Module 4."
-    />
-  );
-}
-
 export function AdminPage() {
   return (
     <PlaceholderPage

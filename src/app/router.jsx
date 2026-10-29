@@ -8,10 +8,10 @@ import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
 import {
   BudgetsPage,
   ReportsPage,
-  ProfilePage,
   AdminPage,
   NotFoundPage,
 } from '../pages/PlaceholderPages.jsx';
+import ProfilePage from '../pages/profile/Profile.jsx';
 import ProtectedRoute from '../features/auth/ProtectedRoute.jsx';
 import PublicOnlyRoute from '../features/auth/PublicOnlyRoute.jsx';
 

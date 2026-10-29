@@ -33,3 +33,23 @@ Clients send `serverTimestamp()` for `createdAt` and `updatedAt`. The rules requ
 - The rules do not check that `categoryId` exists or that its type matches the transaction. This needs a `get()` lookup, which Module 5 will add when real categories exist.
 - Transaction queries by date and type will need composite indexes in Module 5.
 - Account deletion must remove subcollections through trusted code. Module 3 or 10 will implement this.
+## User profile (Module 4)
+
+Document: users/{uid}, where uid is the signed-in Firebase Auth UID.
+
+| Field | Type | Who writes it | Notes |
+|---|---|---|---|
+| displayName | string, 1 to 80 characters | user | Trimmed before save |
+| email | string | created from Auth | Must equal the sign-in email. Read-only in the app |
+| currency | INR, USD, EUR, GBP | user | Display preference only. Stored amounts are never converted |
+| theme | light, dark, system | user | Saved only. Not applied yet |
+| language | en (optional) | user | Saved only. Only English exists |
+| accountStatus | ctive | created by the app as ctive, locked after creation | Suspension enforcement is planned for Module 10 |
+| createdAt | timestamp | server | Locked after creation |
+| updatedAt | timestamp | server | Required on every write |
+
+Not stored: passwords, tokens, roles, admin flags, photo URLs, or any transaction or budget data.
+
+Profile creation: ensureUserProfile runs when the user first opens /profile. It uses a transaction so the document is created only once.
+
+Limitations: currency conversion, global theme switching, and full localization are not implemented.
