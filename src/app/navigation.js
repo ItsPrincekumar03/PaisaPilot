@@ -4,7 +4,7 @@ export const NAV_ITEMS = [
   { to: '/budgets', label: 'Budgets', title: 'Budgets', icon: 'budget' },
   { to: '/reports', label: 'Reports', title: 'Reports', icon: 'reports' },
   { to: '/profile', label: 'Profile', title: 'Profile & Preferences', icon: 'profile' },
-  { to: '/admin', label: 'Admin', title: 'Admin Preview', icon: 'admin', preview: true },
+  { to: '/admin', label: 'Admin', title: 'Admin Dashboard', icon: 'admin' },
 ];
 
 export function getPageTitle(pathname) {

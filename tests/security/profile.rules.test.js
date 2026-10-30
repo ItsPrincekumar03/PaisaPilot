@@ -8,6 +8,7 @@ const [emulatorHost, emulatorPort] = (process.env.FIRESTORE_EMULATOR_HOST ?? '12
 
 const ALICE = { uid: 'alice', email: 'alice@example.com' };
 const BOB = { uid: 'bob', email: 'bob@example.com' };
+const ADMIN = { uid: 'admin_user', email: 'admin@example.com', token: { admin: true } };
 
 let testEnv;
 
@@ -31,10 +32,14 @@ beforeEach(async () => {
 });
 
 function dbFor(user) {
-  const context = user
-    ? testEnv.authenticatedContext(user.uid, { email: user.email })
-    : testEnv.unauthenticatedContext();
-  return context.firestore();
+  if (!user) {
+    return testEnv.unauthenticatedContext().firestore();
+  }
+  const token = {
+    email: user.email,
+    ...(user.token || {}),
+  };
+  return testEnv.authenticatedContext(user.uid, token).firestore();
 }
 
 async function seed(path, data) {
@@ -51,6 +56,30 @@ function profileData(email, overrides = {}) {
     theme: 'system',
     language: 'en',
     accountStatus: 'active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  };
+}
+
+function validTxData(overrides = {}) {
+  return {
+    type: 'expense',
+    amountPaise: 50000,
+    categoryId: 'food_dining',
+    date: '2026-10-30',
+    description: 'Groceries',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  };
+}
+
+function validBudgetData(overrides = {}) {
+  return {
+    monthKey: '2026-10',
+    categoryId: 'food_dining',
+    limitPaise: 1000000,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...overrides,
@@ -134,7 +163,7 @@ describe('privileged and protected fields', () => {
     await assertFails(updateOwnProfile({ isAdmin: true }));
   });
 
-  it('rejects changing accountStatus', async () => {
+  it('rejects changing accountStatus by normal user', async () => {
     await assertFails(updateOwnProfile({ accountStatus: 'suspended' }));
   });
 
@@ -163,5 +192,146 @@ describe('cross-user profile isolation', () => {
   it('denies profile deletion by the owner', async () => {
     await seed('users/alice', profileData(ALICE.email));
     await assertFails(deleteDoc(doc(dbFor(ALICE), 'users/alice')));
+  });
+});
+
+describe('admin privileges and account suspension', () => {
+  it('allows an admin to read any user profile', async () => {
+    await seed('users/alice', profileData(ALICE.email));
+    await assertSucceeds(getDoc(doc(dbFor(ADMIN), 'users/alice')));
+  });
+
+  it('allows an admin to suspend a user account', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+    await assertSucceeds(
+      updateDoc(doc(dbFor(ADMIN), 'users/alice'), {
+        accountStatus: 'suspended',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('allows an admin to restore a suspended user account', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    await assertSucceeds(
+      updateDoc(doc(dbFor(ADMIN), 'users/alice'), {
+        accountStatus: 'active',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('rejects an admin setting an invalid account status', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+    await assertFails(
+      updateDoc(doc(dbFor(ADMIN), 'users/alice'), {
+        accountStatus: 'banned',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('prevents an admin from suspending their own account (self-lockout prevention)', async () => {
+    await seed('users/admin_user', profileData(ADMIN.email, { accountStatus: 'active' }));
+    await assertFails(
+      updateDoc(doc(dbFor(ADMIN), 'users/admin_user'), {
+        accountStatus: 'suspended',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('prevents non-admin user Bob from suspending Alice', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+    await assertFails(
+      updateDoc(doc(dbFor(BOB), 'users/alice'), {
+        accountStatus: 'suspended',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+});
+
+describe('suspended-user write restrictions on transactions and budgets', () => {
+  it('allows an active user to create and update a transaction', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+    const txRef = doc(dbFor(ALICE), 'users/alice/transactions/tx_1');
+    await assertSucceeds(setDoc(txRef, validTxData()));
+    await assertSucceeds(
+      updateDoc(txRef, {
+        description: 'Updated Groceries',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('denies a suspended user creating a transaction', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    const txRef = doc(dbFor(ALICE), 'users/alice/transactions/tx_1');
+    await assertFails(setDoc(txRef, validTxData()));
+  });
+
+  it('denies a suspended user updating a transaction', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    await seed('users/alice/transactions/tx_1', validTxData());
+    const txRef = doc(dbFor(ALICE), 'users/alice/transactions/tx_1');
+    await assertFails(
+      updateDoc(txRef, {
+        description: 'Hacked Groceries',
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('allows an active user to create and update a budget', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+    const budgetRef = doc(dbFor(ALICE), 'users/alice/budgets/2026-10_food_dining');
+    await assertSucceeds(setDoc(budgetRef, validBudgetData()));
+    await assertSucceeds(
+      updateDoc(budgetRef, {
+        limitPaise: 1200000,
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('denies a suspended user creating a budget', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    const budgetRef = doc(dbFor(ALICE), 'users/alice/budgets/2026-10_food_dining');
+    await assertFails(setDoc(budgetRef, validBudgetData()));
+  });
+
+  it('denies a suspended user updating a budget', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    await seed('users/alice/budgets/2026-10_food_dining', validBudgetData());
+    const budgetRef = doc(dbFor(ALICE), 'users/alice/budgets/2026-10_food_dining');
+    await assertFails(
+      updateDoc(budgetRef, {
+        limitPaise: 1500000,
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it('denies transaction creation when user profile does not exist', async () => {
+    const txRef = doc(dbFor(ALICE), 'users/alice/transactions/tx_1');
+    await assertFails(setDoc(txRef, validTxData()));
+  });
+
+  it('denies transaction creation when profile has missing accountStatus', async () => {
+    const brokenProfile = profileData(ALICE.email);
+    delete brokenProfile.accountStatus;
+    await seed('users/alice', brokenProfile);
+    const txRef = doc(dbFor(ALICE), 'users/alice/transactions/tx_1');
+    await assertFails(setDoc(txRef, validTxData()));
+  });
+
+  it('permits a suspended user to read existing transactions and budgets', async () => {
+    await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+    await seed('users/alice/transactions/tx_1', validTxData());
+    await seed('users/alice/budgets/2026-10_food_dining', validBudgetData());
+
+    await assertSucceeds(getDoc(doc(dbFor(ALICE), 'users/alice/transactions/tx_1')));
+    await assertSucceeds(getDoc(doc(dbFor(ALICE), 'users/alice/budgets/2026-10_food_dining')));
   });
 });

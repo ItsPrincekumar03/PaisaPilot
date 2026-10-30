@@ -13,6 +13,19 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
+    }
+
+    function isActiveUser(userId) {
+      return isOwner(userId)
+        && exists(/databases/$(database)/documents/users/$(userId))
+        && 'accountStatus' in get(/databases/$(database)/documents/users/$(userId)).data
+        && get(/databases/$(database)/documents/users/$(userId)).data.accountStatus == 'active';
+    }
+
     function isIsoDate(value) {
       return value is string
         && value.matches(
@@ -45,20 +58,16 @@ service cloud.firestore {
       return value is string && value.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
     }
 
-    function isText(value, maxLength) {
-      return value is string && value.size() <= maxLength;
+    function isPositiveInt(value) {
+      return value is int && value > 0;
     }
 
     function isNonEmptyText(value, maxLength) {
       return value is string && value.size() > 0 && value.size() <= maxLength;
     }
 
-    function isPositiveInt(value) {
-      return value is int && value > 0;
-    }
-
     function isHexColor(value) {
-      return value is string && value.matches('^#[0-9A-Fa-f]{6}$');
+      return value is string && value.matches('^#[0-9a-fA-F]{6}$');
     }
 
     function requiredProfileFields() {
@@ -83,6 +92,16 @@ service cloud.firestore {
     }
 
     function isValidProfileContent(data) {
+      return data.keys().hasOnly(profileFields())
+        && data.keys().hasAll(requiredProfileFields())
+        && isNonEmptyText(data.displayName, 80)
+        && data.email == resource.data.email
+        && data.currency in ['INR', 'USD', 'EUR', 'GBP']
+        && data.theme in ['light', 'dark', 'system']
+        && (!('language' in data) || data.language in ['en']);
+    }
+
+    function isValidNewProfileContent(data) {
       return data.keys().hasOnly(profileFields())
         && data.keys().hasAll(requiredProfileFields())
         && isNonEmptyText(data.displayName, 80)
@@ -141,22 +160,28 @@ service cloud.firestore {
 
     match /users/{userId} {
 
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
 
       // Clients may create only an active INR profile whose email matches their sign-in.
       // They cannot set role, admin, or suspension fields.
       allow create: if isOwner(userId)
-        && isValidProfileContent(request.resource.data)
+        && isValidNewProfileContent(request.resource.data)
         && request.resource.data.accountStatus == 'active'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
       // Clients may change only safe preferences. accountStatus and createdAt are locked.
-      allow update: if isOwner(userId)
+      // Authorized administrators may update accountStatus (active/suspended) on other users without self-lockout.
+      allow update: if (isOwner(userId)
         && isValidProfileContent(request.resource.data)
         && request.resource.data.accountStatus == resource.data.accountStatus
         && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time)
+        || (isAdmin()
+        && request.auth.uid != userId
+        && request.resource.data.accountStatus in ['active', 'suspended']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['accountStatus', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time);
 
       // Account deletion must go through a trusted backend that removes subcollections.
       allow delete: if false;
@@ -164,73 +189,58 @@ service cloud.firestore {
       // ---------- Transactions ----------
 
       match /transactions/{transactionId} {
+
         allow read: if isOwner(userId);
 
-        allow create: if isOwner(userId)
+        allow create: if isActiveUser(userId)
           && isValidTransaction(request.resource.data)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
 
-        allow update: if isOwner(userId)
+        allow update: if isActiveUser(userId)
           && isValidTransaction(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time;
 
-        allow delete: if isOwner(userId);
+        allow delete: if isActiveUser(userId);
       }
 
-      // ---------- Monthly budgets (document ID = "YYYY-MM") ----------
+      // ---------- Budgets ----------
 
-      match /budgets/{monthId} {
+      match /budgets/{budgetId} {
+
         allow read: if isOwner(userId);
 
-        allow create: if isOwner(userId)
-          && isValidBudget(request.resource.data, monthId)
+        allow create: if isActiveUser(userId)
+          && isValidBudget(request.resource.data, budgetId)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
 
-        allow update: if isOwner(userId)
-          && isValidBudget(request.resource.data, monthId)
+        allow update: if isActiveUser(userId)
+          && isValidBudget(request.resource.data, budgetId)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time;
 
-        allow delete: if isOwner(userId);
-      }
-
-      // ---------- Personal categories (reserved for future use) ----------
-
-      match /categories/{categoryId} {
-        allow read: if isOwner(userId);
-
-        allow create: if isOwner(userId)
-          && isValidCategory(request.resource.data)
-          && request.resource.data.createdAt == request.time
-          && request.resource.data.updatedAt == request.time;
-
-        allow update: if isOwner(userId)
-          && isValidCategory(request.resource.data)
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.updatedAt == request.time;
-
-        allow delete: if isOwner(userId);
+        allow delete: if isActiveUser(userId);
       }
     }
 
-    // ---------- Global categories: readable by signed-in users, written only by trusted code ----------
+    // ---------- Global categories ----------
 
     match /categories/{categoryId} {
+
       allow read: if isSignedIn();
-      allow write: if false;
+
+      allow create, update, delete: if false;
     }
 
-    // ---------- Audit logs: written only by trusted backend code ----------
+    // ---------- Explicitly deny collections not intended for client access ----------
 
     match /auditLogs/{logId} {
       allow read, write: if false;
     }
 
-    // ---------- Default deny for everything else ----------
-
+    // Default deny for everything else
     match /{document=**} {
       allow read, write: if false;
     }
