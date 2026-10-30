@@ -3,11 +3,11 @@ import AppLayout from '../components/layout/AppLayout.jsx';
 import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
 import TransactionsPage from '../pages/transactions/TransactionsPage.jsx';
 import BudgetPage from '../pages/budgets/BudgetPage.jsx';
+import ReportsPage from '../pages/reports/ReportsPage.jsx';
 import LoginPage from '../pages/auth/Login.jsx';
 import RegisterPage from '../pages/auth/Register.jsx';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
 import {
-  ReportsPage,
   AdminPage,
   NotFoundPage,
 } from '../pages/PlaceholderPages.jsx';
