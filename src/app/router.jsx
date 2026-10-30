@@ -14,6 +14,7 @@ import {
 import ProfilePage from '../pages/profile/Profile.jsx';
 import ProtectedRoute from '../features/auth/ProtectedRoute.jsx';
 import PublicOnlyRoute from '../features/auth/PublicOnlyRoute.jsx';
+import AdminRoute from '../features/admin/AdminRoute.jsx';
 
 export default function AppRouter() {
   return (
@@ -32,7 +33,9 @@ export default function AppRouter() {
           <Route path="budgets" element={<BudgetPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<AdminPage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="admin" element={<AdminPage />} />
+          </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
