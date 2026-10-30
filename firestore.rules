@@ -1,0 +1,222 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Helpers ----------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isIsoDate(value) {
+      return value is string
+        && value.matches(
+          '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$'
+        )
+        && (
+          value.matches(
+            '^[0-9]{4}-(01|03|05|07|08|10|12)-(0[1-9]|[12][0-9]|3[01])$'
+          )
+          || value.matches(
+            '^[0-9]{4}-(04|06|09|11)-(0[1-9]|[12][0-9]|30)$'
+          )
+          || value.matches(
+            '^[0-9]{4}-02-(0[1-9]|1[0-9]|2[0-8])$'
+          )
+          || (
+            value.matches('^[0-9]{4}-02-29$')
+            && (
+              int(value.split('-')[0]) % 400 == 0
+              || (
+                int(value.split('-')[0]) % 4 == 0
+                && int(value.split('-')[0]) % 100 != 0
+              )
+            )
+          )
+        );
+    }
+
+    function isMonthKey(value) {
+      return value is string && value.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function isText(value, maxLength) {
+      return value is string && value.size() <= maxLength;
+    }
+
+    function isNonEmptyText(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function isPositiveInt(value) {
+      return value is int && value > 0;
+    }
+
+    function isHexColor(value) {
+      return value is string && value.matches('^#[0-9A-Fa-f]{6}$');
+    }
+
+    function requiredProfileFields() {
+      return ['displayName', 'email', 'currency', 'theme', 'accountStatus', 'createdAt', 'updatedAt'];
+    }
+
+    // "language" is optional so profiles created before Module 4 remain valid.
+    function profileFields() {
+      return ['displayName', 'email', 'currency', 'theme', 'language', 'accountStatus', 'createdAt', 'updatedAt'];
+    }
+
+    function transactionFields() {
+      return ['type', 'amountPaise', 'categoryId', 'date', 'description', 'createdAt', 'updatedAt'];
+    }
+
+    function budgetFields() {
+      return ['monthKey', 'limitPaise', 'createdAt', 'updatedAt'];
+    }
+
+    function categoryFields() {
+      return ['name', 'type', 'color', 'icon', 'active', 'createdAt', 'updatedAt'];
+    }
+
+    function isValidProfileContent(data) {
+      return data.keys().hasOnly(profileFields())
+        && data.keys().hasAll(requiredProfileFields())
+        && isNonEmptyText(data.displayName, 80)
+        && data.email == request.auth.token.email
+        && data.currency in ['INR', 'USD', 'EUR', 'GBP']
+        && data.theme in ['light', 'dark', 'system']
+        && (!('language' in data) || data.language in ['en']);
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasOnly(transactionFields())
+        && data.keys().hasAll(transactionFields())
+        && data.type in ['income', 'expense']
+        && isPositiveInt(data.amountPaise)
+        && data.amountPaise <= 1000000000
+        && isNonEmptyText(data.categoryId, 64)
+        && isIsoDate(data.date)
+        && isNonEmptyText(data.description, 200);
+    }
+
+    function isValidBudget(data, monthId) {
+      return isMonthKey(monthId)
+        && data.keys().hasOnly(budgetFields())
+        && data.keys().hasAll(budgetFields())
+        && data.monthKey == monthId
+        && isPositiveInt(data.limitPaise);
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasOnly(categoryFields())
+        && data.keys().hasAll(categoryFields())
+        && isNonEmptyText(data.name, 60)
+        && data.type in ['income', 'expense']
+        && isHexColor(data.color)
+        && isNonEmptyText(data.icon, 40)
+        && data.active is bool;
+    }
+
+    // ---------- User profile ----------
+
+    match /users/{userId} {
+
+      allow read: if isOwner(userId);
+
+      // Clients may create only an active INR profile whose email matches their sign-in.
+      // They cannot set role, admin, or suspension fields.
+      allow create: if isOwner(userId)
+        && isValidProfileContent(request.resource.data)
+        && request.resource.data.accountStatus == 'active'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Clients may change only safe preferences. accountStatus and createdAt are locked.
+      allow update: if isOwner(userId)
+        && isValidProfileContent(request.resource.data)
+        && request.resource.data.accountStatus == resource.data.accountStatus
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      // Account deletion must go through a trusted backend that removes subcollections.
+      allow delete: if false;
+
+      // ---------- Transactions ----------
+
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidTransaction(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidTransaction(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ---------- Monthly budgets (document ID = "YYYY-MM") ----------
+
+      match /budgets/{monthId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidBudget(request.resource.data, monthId)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidBudget(request.resource.data, monthId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ---------- Personal categories (reserved for future use) ----------
+
+      match /categories/{categoryId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidCategory(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidCategory(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // ---------- Global categories: readable by signed-in users, written only by trusted code ----------
+
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // ---------- Audit logs: written only by trusted backend code ----------
+
+    match /auditLogs/{logId} {
+      allow read, write: if false;
+    }
+
+    // ---------- Default deny for everything else ----------
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -3,34 +3,38 @@ import AppLayout from '../components/layout/AppLayout.jsx';
 import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
 import TransactionsPage from '../pages/transactions/TransactionsPage.jsx';
 import BudgetPage from '../pages/budgets/BudgetPage.jsx';
-import Login from '../pages/auth/Login.jsx';
-import Register from '../pages/auth/Register.jsx';
-import ForgotPassword from '../pages/auth/ForgotPassword.jsx';
+import LoginPage from '../pages/auth/Login.jsx';
+import RegisterPage from '../pages/auth/Register.jsx';
+import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
 import {
   ReportsPage,
-  ProfilePage,
   AdminPage,
   NotFoundPage,
 } from '../pages/PlaceholderPages.jsx';
+import ProfilePage from '../pages/profile/Profile.jsx';
+import ProtectedRoute from '../features/auth/ProtectedRoute.jsx';
+import PublicOnlyRoute from '../features/auth/PublicOnlyRoute.jsx';
 
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Public Authentication Routes */}
-      <Route path="login" element={<Login />} />
-      <Route path="register" element={<Register />} />
-      <Route path="forgot-password" element={<ForgotPassword />} />
+      <Route element={<PublicOnlyRoute />}>
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      </Route>
 
-      {/* Main App Layout */}
-      <Route element={<AppLayout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="transactions" element={<TransactionsPage />} />
-        <Route path="budgets" element={<BudgetPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="admin" element={<AdminPage />} />
-        <Route path="*" element={<NotFoundPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="budgets" element={<BudgetPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="admin" element={<AdminPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Route>
     </Routes>
   );

@@ -2,20 +2,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { DEMO_MONTH_KEY } from '../data/demoData.js';
 import { fetchDashboardData } from '../services/dashboardService.js';
 
-/**
- * Custom hook to fetch and manage financial dashboard state.
- * Handles loading, error, empty, and success states as well as period selection.
- */
 export function useDashboardData() {
   const [selectedMonthKey, setSelectedMonthKey] = useState(DEMO_MONTH_KEY);
-  const [viewMode, setViewMode] = useState('demo'); // 'demo' | 'empty' | 'error'
-  const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
+  const [viewMode, setViewMode] = useState('active');
+  const [status, setStatus] = useState('loading');
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [reloadIndex, setReloadIndex] = useState(0);
 
   const refetch = useCallback(() => {
-    setReloadIndex((prev) => prev + 1);
+    setReloadIndex((previous) => previous + 1);
   }, []);
 
   useEffect(() => {

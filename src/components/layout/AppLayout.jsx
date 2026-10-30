@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Header from './Header.jsx';
+import FirebaseConfigNotice from '../feedback/FirebaseConfigNotice.jsx';
 
 export default function AppLayout() {
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -46,6 +47,7 @@ export default function AppLayout() {
           onToggleNav={() => setIsNavOpen((open) => !open)}
         />
         <main id="main-content" className="page-content" tabIndex={-1}>
+          <FirebaseConfigNotice />
           <Outlet />
         </main>
       </div>

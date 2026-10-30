@@ -1,0 +1,168 @@
+.transaction-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.transaction-page-actions .button {
+  align-self: auto;
+}
+
+.transaction-notice {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: #E3F5EB;
+  border: 1px solid var(--color-income);
+  color: var(--color-income-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.transaction-editor {
+  border-top: 4px solid var(--color-primary);
+}
+
+.transaction-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.transaction-form__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.transaction-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.transaction-form__type {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.transaction-form__type legend {
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.type-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.type-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.type-option input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+
+.type-option:focus-within {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.type-option.is-selected.type-option--income {
+  border-color: var(--color-income);
+  background: #E3F5EB;
+  color: var(--color-income-text);
+}
+
+.type-option.is-selected.type-option--expense {
+  border-color: var(--color-expense);
+  background: #FDE8E7;
+  color: var(--color-expense-text);
+}
+
+.button--danger {
+  background: var(--color-expense-text);
+}
+
+.button--danger:hover {
+  background: #8F302A;
+}
+
+.button--small {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.transaction-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.transaction-item__actions .button {
+  align-self: auto;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(37, 36, 58, 0.45);
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.confirm-dialog__actions .button {
+  align-self: auto;
+}
+
+@media (max-width: 420px) {
+  .type-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
