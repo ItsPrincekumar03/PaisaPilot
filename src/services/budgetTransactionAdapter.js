@@ -1,7 +1,7 @@
 import { fetchTransactions } from './transactionService.js';
 import { isValidIsoDate } from '../utils/transactionFilters.js';
 
-export const TRANSACTION_SOURCE_IS_SAMPLE = true;
+export const TRANSACTION_SOURCE_IS_SAMPLE = false;
 
 function isUsableTransaction(transaction) {
   return (
@@ -16,7 +16,7 @@ function isUsableTransaction(transaction) {
   );
 }
 
-export async function loadBudgetSourceData({ mode = 'demo' } = {}) {
+export async function loadBudgetSourceData({ mode = 'active' } = {}) {
   const result = await fetchTransactions({ mode });
   const transactions = Array.isArray(result.transactions) ? result.transactions : [];
   const categories = Array.isArray(result.categories) ? result.categories : [];
@@ -24,6 +24,6 @@ export async function loadBudgetSourceData({ mode = 'demo' } = {}) {
   return {
     transactions: transactions.filter(isUsableTransaction),
     categories,
-    isSampleData: TRANSACTION_SOURCE_IS_SAMPLE,
+    isSampleData: mode === 'demo',
   };
 }

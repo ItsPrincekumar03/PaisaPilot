@@ -7,7 +7,7 @@ export default function BudgetHistory({ history }) {
       <div className="panel__header">
         <h3 id="budget-history-heading">Budget history</h3>
         <p className="panel__subtitle">
-          Last {history.length} months. Spending uses sample transaction data until Module 5 is connected.
+          Last {history.length} months of planned category budgets and recorded spending.
         </p>
       </div>
       <div className="budget-history__scroll">

@@ -2,15 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createBudget, deleteBudget, listBudgets, updateBudget } from '../services/budgetService.js';
 import { loadBudgetSourceData } from '../services/budgetTransactionAdapter.js';
 import { buildCategoryBudgetRows, buildMonthlyHistory, summarizeBudgetRows } from '../utils/budgetCalculations.js';
-import { PREVIEW_OWNER_ID } from '../utils/budgetConstants.js';
 
-export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId = PREVIEW_OWNER_ID }) {
+export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId }) {
   const [source, setSource] = useState({
     status: 'loading',
     budgets: [],
     transactions: [],
     categories: [],
-    isSampleData: true,
+    isSampleData: false,
     error: null,
   });
   const [reloadKey, setReloadKey] = useState(0);
@@ -18,6 +17,14 @@ export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId =
 
   useEffect(() => {
     let isActive = true;
+
+    if (!ownerId) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setSource((previous) => ({ ...previous, status: 'loading', error: null }));
 
     Promise.all([listBudgets(ownerId), loadBudgetSourceData()])
       .then(([budgets, transactionSource]) => {
@@ -53,12 +60,14 @@ export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId =
   }, []);
 
   const refreshBudgets = useCallback(async () => {
+    if (!ownerId) return;
     const budgets = await listBudgets(ownerId);
     setSource((previous) => ({ ...previous, budgets }));
   }, [ownerId]);
 
   const saveBudget = useCallback(
     async ({ budgetId, monthKey: targetMonthKey, categoryId, limitPaise }) => {
+      if (!ownerId) return false;
       try {
         if (budgetId) {
           await updateBudget(ownerId, budgetId, { limitPaise });
@@ -78,6 +87,7 @@ export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId =
 
   const removeBudget = useCallback(
     async (budgetId) => {
+      if (!ownerId) return false;
       try {
         await deleteBudget(ownerId, budgetId);
         await refreshBudgets();

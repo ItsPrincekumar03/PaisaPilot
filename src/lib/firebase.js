@@ -18,7 +18,7 @@ const EMULATOR_FIRESTORE_PORT = 8080;
  * Reads and validates the Firebase web configuration.
  * Returns variable NAMES that are missing, never their values, so nothing sensitive is exposed.
  */
-export function getFirebaseConfigStatus(env = import.meta.env) {
+export function getFirebaseConfigStatus(env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : {}) {
     const config = {};
     const missing = [];
 
@@ -47,7 +47,7 @@ if (firebaseStatus.isConfigured) {
     auth = getAuth(app);
     db = getFirestore(app);
 
-    if (import.meta.env.VITE_FIREBASE_USE_EMULATOR === 'true') {
+    if (import.meta.env?.VITE_FIREBASE_USE_EMULATOR === 'true') {
         connectAuthEmulator(auth, EMULATOR_AUTH_URL, { disableWarnings: true });
         connectFirestoreEmulator(db, EMULATOR_FIRESTORE_HOST, EMULATOR_FIRESTORE_PORT);
     }

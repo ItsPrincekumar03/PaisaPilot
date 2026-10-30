@@ -11,15 +11,18 @@ import BudgetInsights from '../../components/budgets/BudgetInsights.jsx';
 import BudgetHistory from '../../components/budgets/BudgetHistory.jsx';
 import DeleteBudgetDialog from '../../components/budgets/DeleteBudgetDialog.jsx';
 import useBudgetManager from '../../hooks/useBudgetManager.js';
+import { useAuth } from '../../features/auth/useAuth.js';
 import { DEMO_MONTH_KEY } from '../../data/demoData.js';
 import { BUDGET_HISTORY_MONTH_COUNT } from '../../utils/budgetConstants.js';
 import { buildBudgetInsights } from '../../utils/budgetCalculations.js';
 import { formatMonthLabel, getRecentMonthKeys } from '../../utils/dates.js';
 
 const MONTH_KEYS_NEWEST_FIRST = getRecentMonthKeys(DEMO_MONTH_KEY, BUDGET_HISTORY_MONTH_COUNT).reverse();
-const PERIOD_OPTIONS = MONTH_KEYS_NEWEST_FIRST.map((key) => ({ value: key, label: formatMonthLabel(key) }));
+const PERIODS = MONTH_KEYS_NEWEST_FIRST.map((key) => ({ key, label: formatMonthLabel(key) }));
 
 export default function BudgetPage() {
+  const { user } = useAuth();
+  const ownerId = user?.uid;
   const [selectedMonthKey, setSelectedMonthKey] = useState(DEMO_MONTH_KEY);
   const [formState, setFormState] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -39,7 +42,11 @@ export default function BudgetPage() {
     retry,
     saveBudget,
     removeBudget,
-  } = useBudgetManager({ monthKey: selectedMonthKey, historyMonthKeys: MONTH_KEYS_NEWEST_FIRST });
+  } = useBudgetManager({
+    monthKey: selectedMonthKey,
+    historyMonthKeys: MONTH_KEYS_NEWEST_FIRST,
+    ownerId,
+  });
 
   const monthLabel = formatMonthLabel(selectedMonthKey);
   const monthBudgets = budgets.filter((budget) => budget.monthKey === selectedMonthKey);
@@ -77,21 +84,18 @@ export default function BudgetPage() {
             <p>Set a monthly limit for each expense category and see how much you have used.</p>
           </div>
           <PeriodSelector
-            value={selectedMonthKey}
-            options={PERIOD_OPTIONS}
-            onChange={setSelectedMonthKey}
+            periods={PERIODS}
+            selectedPeriod={selectedMonthKey}
+            onSelectPeriod={setSelectedMonthKey}
             disabled={status === 'loading'}
           />
         </div>
       </section>
 
-      {isSampleData ? (
+      {isSampleData && (
         <p className="budget-notice">
-          Spending figures come from sample transaction data until Module 5 is connected. Budgets are kept for this
-          session only and are not saved to your account yet.
+          Spending figures come from demo data until live transactions are recorded.
         </p>
-      ) : (
-        <p className="budget-notice">Budgets are kept for this session only and are not saved to your account yet.</p>
       )}
 
       {notice && (

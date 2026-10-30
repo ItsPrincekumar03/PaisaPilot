@@ -103,12 +103,28 @@ service cloud.firestore {
         && isNonEmptyText(data.description, 200);
     }
 
+    function categoryBudgetFields() {
+      return ['monthKey', 'categoryId', 'limitPaise', 'createdAt', 'updatedAt'];
+    }
+
+    function isValidCategoryBudget(data, budgetId) {
+      return data.keys().hasOnly(categoryBudgetFields())
+        && data.keys().hasAll(categoryBudgetFields())
+        && isMonthKey(data.monthKey)
+        && isNonEmptyText(data.categoryId, 64)
+        && budgetId == data.monthKey + '_' + data.categoryId
+        && isPositiveInt(data.limitPaise)
+        && data.limitPaise <= 1000000000;
+    }
+
     function isValidBudget(data, monthId) {
-      return isMonthKey(monthId)
+      return (
+        isMonthKey(monthId)
         && data.keys().hasOnly(budgetFields())
         && data.keys().hasAll(budgetFields())
         && data.monthKey == monthId
-        && isPositiveInt(data.limitPaise);
+        && isPositiveInt(data.limitPaise)
+      ) || isValidCategoryBudget(data, monthId);
     }
 
     function isValidCategory(data) {
