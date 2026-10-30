@@ -4,6 +4,7 @@ import DashboardPage from '../pages/dashboard/DashboardPage.jsx';
 import TransactionsPage from '../pages/transactions/TransactionsPage.jsx';
 import BudgetPage from '../pages/budgets/BudgetPage.jsx';
 import ReportsPage from '../pages/reports/ReportsPage.jsx';
+import RecurringPage from '../pages/recurring/RecurringPage.jsx';
 import LoginPage from '../pages/auth/Login.jsx';
 import RegisterPage from '../pages/auth/Register.jsx';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
@@ -32,6 +33,7 @@ export default function AppRouter() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="budgets" element={<BudgetPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="recurring" element={<RecurringPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route element={<AdminRoute />}>
             <Route path="admin" element={<AdminPage />} />
