@@ -103,6 +103,27 @@ service cloud.firestore {
         && isNonEmptyText(data.description, 200);
     }
 
+    function recurringFields() {
+      return ['type', 'amountPaise', 'categoryId', 'description', 'frequency', 'startDate', 'endDate', 'status', 'nextIndex', 'nextDate', 'createdAt', 'updatedAt'];
+    }
+
+    function isValidRecurringSchedule(data) {
+      return data.keys().hasOnly(recurringFields())
+        && data.keys().hasAll(['type', 'amountPaise', 'categoryId', 'description', 'frequency', 'startDate', 'status', 'nextIndex', 'createdAt', 'updatedAt'])
+        && data.type in ['income', 'expense']
+        && isPositiveInt(data.amountPaise)
+        && data.amountPaise <= 1000000000
+        && isNonEmptyText(data.categoryId, 64)
+        && isIsoDate(data.startDate)
+        && (data.endDate == null || isIsoDate(data.endDate))
+        && (data.endDate == null || data.endDate >= data.startDate)
+        && isNonEmptyText(data.description, 200)
+        && data.frequency in ['daily', 'weekly', 'monthly', 'yearly']
+        && data.status in ['active', 'paused', 'cancelled']
+        && data.nextIndex is int && data.nextIndex >= 0
+        && (data.nextDate == null || isIsoDate(data.nextDate));
+    }
+
     function categoryBudgetFields() {
       return ['monthKey', 'categoryId', 'limitPaise', 'createdAt', 'updatedAt'];
     }
@@ -191,6 +212,24 @@ service cloud.firestore {
 
         allow update: if isOwner(userId)
           && isValidBudget(request.resource.data, monthId)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ---------- Recurring Schedules ----------
+
+      match /recurring/{scheduleId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+          && isValidRecurringSchedule(request.resource.data)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidRecurringSchedule(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.updatedAt == request.time;
 
