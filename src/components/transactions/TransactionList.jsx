@@ -1,8 +1,16 @@
 import { formatINR } from '../../utils/currency.js';
 import { formatDisplayDate } from '../../utils/dates.js';
 
-export default function TransactionList({ transactions = [], categories = [] }) {
+const SEPARATOR = '\u00B7';
+
+export default function TransactionList({
+  transactions = [],
+  categories = [],
+  onEdit,
+  onDelete,
+}) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const showActions = Boolean(onEdit || onDelete);
 
   return (
     <ul className="transaction-list transaction-list--full">
@@ -21,10 +29,11 @@ export default function TransactionList({ transactions = [], categories = [] }) 
                   aria-hidden="true"
                 />
                 <span>{category?.name ?? 'Uncategorized'}</span>
-                <span aria-hidden="true">-</span>
+                <span aria-hidden="true">{SEPARATOR}</span>
                 <time dateTime={transaction.date}>{formatDisplayDate(transaction.date)}</time>
               </p>
             </div>
+
             <div className="transaction-item__side">
               <span className={`badge badge--${isIncome ? 'income' : 'expense'}`}>
                 {isIncome ? 'Income' : 'Expense'}
@@ -33,6 +42,31 @@ export default function TransactionList({ transactions = [], categories = [] }) 
                 {isIncome ? '+' : '-'}
                 {formatINR(transaction.amountPaise)}
               </span>
+
+              {showActions && (
+                <div className="transaction-item__actions">
+                  {onEdit && (
+                    <button
+                      type="button"
+                      className="button button--secondary button--small"
+                      onClick={() => onEdit(transaction)}
+                      aria-label={`Edit ${transaction.description}`}
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      className="button button--danger button--small"
+                      onClick={() => onDelete(transaction)}
+                      aria-label={`Delete ${transaction.description}`}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </li>
         );

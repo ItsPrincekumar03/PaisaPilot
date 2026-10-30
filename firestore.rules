@@ -97,6 +97,7 @@ service cloud.firestore {
         && data.keys().hasAll(transactionFields())
         && data.type in ['income', 'expense']
         && isPositiveInt(data.amountPaise)
+        && data.amountPaise <= 1000000000
         && isNonEmptyText(data.categoryId, 64)
         && isIsoDate(data.date)
         && isNonEmptyText(data.description, 200);
