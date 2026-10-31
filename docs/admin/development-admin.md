@@ -1,62 +1,133 @@
-# Development administrator account
+# Module 10: Admin Tools & Account Suspension
 
-This document describes how to provision the PaisaPilot development administrator account securely.
+This document describes the architecture, authorization model, security boundaries, and operational procedures for PaisaPilot Module 10: **Admin Tools & Account Suspension**.
 
-## Requested development credentials
+---
 
-- Email: `admin@example.com`
-- Password: `Myadmin@123`
+## 1. Architecture Overview
 
-These credentials are for local development only. They must never be committed, logged, or embedded in frontend source.
+PaisaPilot is a client-side Single-Page Application (SPA) built with Vite, React, and Firebase.
+Because the client cannot be trusted as an authorization boundary, administrative privileges rely on two complementary security tiers:
 
-## Important limitation
+1. **Firebase Authentication Custom Claims (`token.admin == true`)**:
+   - Out-of-band provisioning via Firebase Admin SDK.
+   - Client inspection (`getIdTokenResult(true)`) strictly for UI routing and presentation state.
+2. **Cloud Firestore Security Rules Enforcement**:
+   - The authoritative enforcement layer for all reads and mutations.
+   - Evaluates `request.auth.token.admin == true` on incoming Firestore operations.
 
-PaisaPilot is currently a client-side Vite Single-Page Application with no trusted backend or server-side execution environment in this repository. Administrator access cannot and must not be established by client-side code or by matching an email address in frontend logic. Privileges must be granted exclusively via Firebase Authentication custom claims set by a trusted server-side process using the Firebase Admin SDK.
+```
++----------------------------------------------------------------------------+
+|                          Client SPA (React + Vite)                         |
+|                                                                            |
+|  [AdminRoute] ---- checks claims via useIsAdmin()                          |
+|         │                                                                  |
+|         ▼                                                                  |
+|  [AdminPage] (Dashboard)                                                   |
+|    - User Listing & Search                                                 |
+|    - Metrics (Total, Active, Suspended)                                    |
+|    - Suspension / Restoration Modal                                        |
+|    - Self-Lockout Prevention UI (Protected)                                |
+|         │                                                                  |
+|         ▼                                                                  |
+|  [adminService.js] & [adminValidation.js]                                  |
++----------------------------------------------------------------------------+
+                                      │
+                                      │ (Firestore API)
+                                      ▼
++----------------------------------------------------------------------------+
+|                        Cloud Firestore Security Rules                      |
+|                                                                            |
+|  /users/{userId}                                                           |
+|    - Read:   isOwner(userId) || isAdmin()                                  |
+|    - Update:                                                               |
+|        (Owner: Safe preference changes, accountStatus immutable)           |
+|        OR                                                                  |
+|        (Admin: request.auth.uid != userId && accountStatus in ['active',   |
+|                'suspended'])                                               |
++----------------------------------------------------------------------------+
+```
 
-## Secure provisioning steps
+---
 
-1. Enable Email/Password authentication in the Firebase Console (`paisapilot-79e63`).
-2. Create the administrator user in Firebase Authentication using the Firebase Console or an isolated administrative CLI script.
-3. In a separate, secure environment outside this repository (or an untracked local Node script):
-   - Install `firebase-admin`.
-   - Initialize the Admin SDK with a private service-account key stored securely outside the repository and outside any `VITE_` environment variable.
-4. Set the custom claim on the admin account using the Admin SDK:
+## 2. Authorization & Claims Model
 
-   ```js
-   import admin from 'firebase-admin';
+### Out-of-Band Admin Provisioning
 
-   // Initialize admin with service account
-   const user = await admin.auth().getUserByEmail('admin@example.com');
-   await admin.auth().setCustomUserClaims(user.uid, { admin: true });
-   ```
+Administrator accounts cannot be self-declared or granted from the client. To promote an account to administrator:
 
-5. Never commit service-account keys or write admin credentials into repository source files.
-6. Revoke or rotate the development credentials when they are no longer needed.
+1. Create or identify the user in Firebase Authentication (`admin@example.com`).
+2. Run an isolated, backend administrative script using `firebase-admin` with a service account key kept outside the repository:
 
-## Verifying admin authorization
+```javascript
+import admin from 'firebase-admin';
 
-1. **Client-side claim verification:**
-   In the browser or client SDK, verify that the custom claim has been attached to the ID token:
-   ```js
-   const tokenResult = await auth.currentUser.getIdTokenResult(true);
-   console.log('Admin claim active:', Boolean(tokenResult.claims.admin));
-   ```
-2. **Firestore security enforcement:**
-   Firestore security rules strictly prevent privilege escalation:
-   - Ordinary clients cannot assign themselves roles or change their status (`tests/security/firestore.rules.test.js` verifies `rejects a self-assigned role field`).
-   - Audit logs (`/auditLogs/`) and global categories (`/categories/`) writes are completely denied to client tokens (`allow write: if false;`), ensuring only trusted Admin SDK processes can modify system data.
+// Initialize admin with credentials stored outside repo (e.g. C:\secrets\paisapilot-admin.json)
+const user = await admin.auth().getUserByEmail('admin@example.com');
+await admin.auth().setCustomUserClaims(user.uid, { admin: true });
+console.log(`Granted admin claim to ${user.email} (${user.uid})`);
+```
 
-## What this frontend does
+3. When the user signs in or refreshes their token (`getIdTokenResult(true)`), `token.claims.admin === true` is recognized.
 
-The frontend only authenticates users through Firebase Authentication. It does not create admin roles, modify custom claims, or bypass Firestore security rules. Any future admin features must verify trusted custom claims or server-side authorization before exposing privileged actions.
+---
 
-## Minimum permissions
+## 3. Account Suspension Semantics
 
-Until an admin feature set exists, no additional permissions are granted. The account should have only the standard authenticated-user permissions already allowed by Firestore security rules.
+### Status Model
+User profiles in `/users/{userId}` support two verified statuses:
+- `'active'`: Full standard user access to expenses, categories, and budgets.
+- `'suspended'`: Account flagged by an administrator.
 
-## Remaining manual steps
+### Rules & Constraints
+1. **Self-Lockout Prevention**:
+   - An administrator cannot suspend, restore, or modify their own account status (`request.auth.uid != userId` in rules, and validated in `adminValidation.js`).
+2. **Owner Status Immutability**:
+   - Standard users cannot alter their own `accountStatus` or elevate privileges (enforced in `firestore.rules`).
+3. **Timestamp Integrity**:
+   - `createdAt` is immutable across updates.
+   - `updatedAt` is tied to `request.time`.
 
-1. In the Firebase Console for project `paisapilot-79e63`, navigate to **Authentication > Users**.
-2. If `admin@example.com` is not yet created, create the user with the development password.
-3. In a secure server or local administrative environment (outside client code), run the Admin SDK script to set `{ admin: true }` custom claim on the user's UID.
-4. Have the administrator sign in via `/login` to receive an ID token containing the `admin` custom claim.
+---
+
+## 4. UI Implementation Details
+
+- **Route Protection**: `/admin` is guarded by `AdminRoute`, which inspects refreshed authentication claims. Non-admins are redirected safely to `/dashboard`.
+- **Admin Dashboard (`src/pages/admin/AdminPage.jsx`)**:
+  - Displays registered accounts summary: Total accounts, Active accounts, Suspended accounts.
+  - Search filter by Name, Email, or UID.
+  - Status filter buttons: All, Active, Suspended.
+  - Status transition modal requiring explicit confirmation.
+  - Action button disables with "Protected (Self)" for the currently signed-in administrator.
+  - Inline alerts for success and error handling.
+
+---
+
+## 5. Verification & Testing
+
+### Unit Tests
+Pure validation logic is tested in `tests/unit/admin.pure.test.js`:
+- `hasAdminClaim`: validates boolean true, rejects truthy strings, numbers, or empty claims.
+- `isValidAccountStatus`: verifies allowed statuses (`active`, `suspended`).
+- `canTransitionStatus`: validates status changes, disallows no-op transitions.
+- `validateSuspensionAction`: enforces admin identity, target identity, and self-suspension rejection.
+
+Run unit tests:
+```powershell
+node --test tests/unit/admin.pure.test.js
+```
+
+### Security Rules Tests
+Rules are tested against the Firebase Local Emulator in `tests/security/profile.rules.test.js` and `tests/security/firestore.rules.test.js`:
+- Allows admin token (`admin: true`) to read any user profile.
+- Allows admin token to suspend an active user.
+- Allows admin token to restore a suspended user.
+- Rejects admin setting invalid status (e.g., `'banned'`).
+- Enforces self-lockout prevention (admin suspending themselves is denied).
+- Denies non-admin users from reading other profiles or updating `accountStatus`.
+
+Run security tests:
+```powershell
+npm run test:rules
+npx firebase emulators:exec --only firestore "node --test tests/security/profile.rules.test.js"
+```

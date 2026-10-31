@@ -29,7 +29,22 @@ after(async () => {
 
 beforeEach(async () => {
   await testEnv.clearFirestore();
+  await seed('users/alice', profileData(ALICE.email));
+  await seed('users/bob', profileData(BOB.email));
 });
+
+function profileData(email, overrides = {}) {
+  return {
+    displayName: 'Test User',
+    email,
+    currency: 'INR',
+    theme: 'light',
+    accountStatus: 'active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...overrides,
+  };
+}
 
 function dbFor(user) {
   const context = user

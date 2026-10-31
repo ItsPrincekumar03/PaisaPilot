@@ -47,6 +47,11 @@ beforeEach(async () => {
     await testEnv.clearFirestore();
 });
 
+async function seedActiveUsers() {
+    await seed('users/alice', profileData(ALICE.email));
+    await seed('users/bob', profileData(BOB.email));
+}
+
 function dbFor(user) {
     const context = user
         ? testEnv.authenticatedContext(user.uid, {
@@ -149,6 +154,7 @@ describe('owner access', () => {
     });
 
     it('lets a user create and read their own transaction', async () => {
+        await seedActiveUsers();
         const ref = doc(
             dbFor(ALICE),
             'users/alice/transactions/t1'
@@ -159,6 +165,7 @@ describe('owner access', () => {
     });
 
     it('lets a user update and delete their own transaction', async () => {
+        await seedActiveUsers();
         await seed(
             'users/alice/transactions/t1',
             transactionData()
@@ -180,6 +187,7 @@ describe('owner access', () => {
     });
 
     it('lets a user create a valid monthly budget', async () => {
+        await seedActiveUsers();
         const ref = doc(
             dbFor(ALICE),
             'users/alice/budgets/2026-10'
@@ -307,6 +315,7 @@ describe('transaction validation', () => {
     }
 
     it('accepts a valid leap-year date', async () => {
+        await seedActiveUsers();
         const ref = doc(
             dbFor(ALICE),
             'users/alice/transactions/leap-day'
@@ -383,6 +392,7 @@ describe('profile and admin protection', () => {
 
 describe('budgets and categories', () => {
     it('allows a valid category-specific budget', async () => {
+        await seedActiveUsers();
         const ref = doc(
             dbFor(ALICE),
             'users/alice/budgets/2026-10_food'
@@ -503,5 +513,143 @@ describe('audit logs and unspecified collections', () => {
         await assertFails(
             getDoc(doc(dbFor(ALICE), 'secrets/alice'))
         );
+    });
+});
+
+describe('Module 10 hardened security: admin updates and suspended accounts', () => {
+    const ADMIN = { uid: 'admin_user', email: 'admin@example.com', admin: true };
+    const NON_ADMIN = { uid: 'non_admin_user', email: 'user@example.com' };
+
+    function adminDb() {
+        return testEnv.authenticatedContext(ADMIN.uid, {
+            email: ADMIN.email,
+            admin: true,
+        }).firestore();
+    }
+
+    it('lets an active user create, update, and delete their own transaction', async () => {
+        await seedActiveUsers();
+        const ref = doc(dbFor(ALICE), 'users/alice/transactions/t_active');
+        await assertSucceeds(setDoc(ref, transactionData()));
+        await assertSucceeds(updateDoc(ref, { description: 'Updated desc', updatedAt: serverTimestamp() }));
+        await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('lets an active user create, update, and delete their own budget', async () => {
+        await seedActiveUsers();
+        const ref = doc(dbFor(ALICE), 'users/alice/budgets/2026-10');
+        await assertSucceeds(setDoc(ref, budgetData()));
+        await assertSucceeds(updateDoc(ref, { limitPaise: 9000000, updatedAt: serverTimestamp() }));
+        await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('denies a suspended user creating, updating, or deleting their own transaction', async () => {
+        await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+        await seed('users/alice/transactions/t_exist', transactionData());
+
+        const newRef = doc(dbFor(ALICE), 'users/alice/transactions/t_new');
+        const existRef = doc(dbFor(ALICE), 'users/alice/transactions/t_exist');
+
+        await assertFails(setDoc(newRef, transactionData()));
+        await assertFails(updateDoc(existRef, { description: 'Suspended update', updatedAt: serverTimestamp() }));
+        await assertFails(deleteDoc(existRef));
+    });
+
+    it('denies a suspended user creating, updating, or deleting their own budget', async () => {
+        await seed('users/alice', profileData(ALICE.email, { accountStatus: 'suspended' }));
+        await seed('users/alice/budgets/2026-10', budgetData());
+
+        const newRef = doc(dbFor(ALICE), 'users/alice/budgets/2026-11');
+        const existRef = doc(dbFor(ALICE), 'users/alice/budgets/2026-10');
+
+        await assertFails(setDoc(newRef, budgetData({ monthKey: '2026-11' })));
+        await assertFails(updateDoc(existRef, { limitPaise: 8000000, updatedAt: serverTimestamp() }));
+        await assertFails(deleteDoc(existRef));
+    });
+
+    it('denies a user accessing or modifying another users private financial records', async () => {
+        await seedActiveUsers();
+        await seed('users/bob/transactions/t_bob', transactionData());
+        await seed('users/bob/budgets/2026-10', budgetData());
+
+        const txRef = doc(dbFor(ALICE), 'users/bob/transactions/t_bob');
+        const budgetRef = doc(dbFor(ALICE), 'users/bob/budgets/2026-10');
+
+        await assertFails(getDoc(txRef));
+        await assertFails(updateDoc(txRef, { description: 'Alice tampering' }));
+        await assertFails(deleteDoc(txRef));
+
+        await assertFails(getDoc(budgetRef));
+        await assertFails(updateDoc(budgetRef, { limitPaise: 1 }));
+        await assertFails(deleteDoc(budgetRef));
+    });
+
+    it('lets a valid admin suspend and restore another users account', async () => {
+        await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+        const aliceRef = doc(adminDb(), 'users/alice');
+
+        // Suspend Alice
+        await assertSucceeds(updateDoc(aliceRef, {
+            accountStatus: 'suspended',
+            updatedAt: serverTimestamp(),
+        }));
+
+        // Restore Alice
+        await assertSucceeds(updateDoc(aliceRef, {
+            accountStatus: 'active',
+            updatedAt: serverTimestamp(),
+        }));
+    });
+
+    it('denies a non-admin from suspending or restoring another users account', async () => {
+        await seed('users/alice', profileData(ALICE.email, { accountStatus: 'active' }));
+        const aliceRef = doc(dbFor(NON_ADMIN), 'users/alice');
+
+        await assertFails(updateDoc(aliceRef, {
+            accountStatus: 'suspended',
+            updatedAt: serverTimestamp(),
+        }));
+    });
+
+    it('denies an admin from suspending or modifying their own account status', async () => {
+        await seed('users/admin_user', profileData(ADMIN.email, { accountStatus: 'active' }));
+        const selfRef = doc(adminDb(), 'users/admin_user');
+
+        await assertFails(updateDoc(selfRef, {
+            accountStatus: 'suspended',
+            updatedAt: serverTimestamp(),
+        }));
+    });
+
+    it('denies an admin from altering another users profile preferences or fields while changing status', async () => {
+        await seed('users/alice', profileData(ALICE.email, {
+            displayName: 'Alice Original',
+            currency: 'INR',
+            theme: 'light',
+            language: 'en',
+            accountStatus: 'active',
+        }));
+        const aliceRef = doc(adminDb(), 'users/alice');
+
+        // Trying to change displayName along with accountStatus
+        await assertFails(updateDoc(aliceRef, {
+            accountStatus: 'suspended',
+            displayName: 'Alice Tampered',
+            updatedAt: serverTimestamp(),
+        }));
+
+        // Trying to change currency along with accountStatus
+        await assertFails(updateDoc(aliceRef, {
+            accountStatus: 'suspended',
+            currency: 'USD',
+            updatedAt: serverTimestamp(),
+        }));
+
+        // Trying to change theme along with accountStatus
+        await assertFails(updateDoc(aliceRef, {
+            accountStatus: 'suspended',
+            theme: 'dark',
+            updatedAt: serverTimestamp(),
+        }));
     });
 });

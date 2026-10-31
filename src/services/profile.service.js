@@ -1,4 +1,4 @@
-import { doc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, runTransaction, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase.js';
 import { DEFAULT_PREFERENCES, DISPLAY_NAME_MAX_LENGTH } from '../features/profile/profileConstants.js';
 import { validateProfileUpdates } from '../features/profile/profileValidation.js';
@@ -9,6 +9,8 @@ const FIRESTORE_MESSAGES = {
   unavailable: 'Cannot reach the server. Check your connection and try again.',
   'deadline-exceeded': 'The request timed out. Please try again.',
   'not-found': 'Your profile could not be found. Reload the page and try again.',
+  'already-exists': 'A profile document already exists.',
+  'failed-precondition': 'Operation precondition failed.',
 };
 const DEFAULT_ERROR = 'Could not save your profile. Please try again.';
 
@@ -62,6 +64,19 @@ export async function ensureUserProfile(user) {
 
   const ref = doc(db, 'users', user.uid);
 
+  // Quick check: if the document already exists, return it directly without running a transaction.
+  try {
+    const existingSnap = await getDoc(ref);
+    if (existingSnap.exists()) {
+      return { ok: true, created: false, profile: toProfileView(existingSnap.data()) };
+    }
+  } catch (err) {
+    // If getDoc fails due to permission or network, let fromFirestoreError handle it or proceed to transaction
+    if (err?.code === 'permission-denied' || err?.code === 'unavailable') {
+      return fromFirestoreError(err);
+    }
+  }
+
   try {
     return await runTransaction(db, async (transaction) => {
       const snapshot = await transaction.get(ref);
@@ -90,6 +105,17 @@ export async function ensureUserProfile(user) {
       };
     });
   } catch (error) {
+    // If a concurrent request or race condition already created the document, safely fetch and return it.
+    if (error?.code === 'already-exists' || error?.code === 'failed-precondition') {
+      try {
+        const fallbackSnap = await getDoc(ref);
+        if (fallbackSnap.exists()) {
+          return { ok: true, created: false, profile: toProfileView(fallbackSnap.data()) };
+        }
+      } catch {
+        // Fall through to fromFirestoreError
+      }
+    }
     return fromFirestoreError(error);
   }
 }

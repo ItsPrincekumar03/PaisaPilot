@@ -8,10 +8,8 @@ import RecurringPage from '../pages/recurring/RecurringPage.jsx';
 import LoginPage from '../pages/auth/Login.jsx';
 import RegisterPage from '../pages/auth/Register.jsx';
 import ForgotPasswordPage from '../pages/auth/ForgotPassword.jsx';
-import {
-  AdminPage,
-  NotFoundPage,
-} from '../pages/PlaceholderPages.jsx';
+import AdminPage from '../pages/admin/AdminPage.jsx';
+import { NotFoundPage } from '../pages/PlaceholderPages.jsx';
 import ProfilePage from '../pages/profile/Profile.jsx';
 import ProtectedRoute from '../features/auth/ProtectedRoute.jsx';
 import PublicOnlyRoute from '../features/auth/PublicOnlyRoute.jsx';
