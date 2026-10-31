@@ -1,213 +1,196 @@
-# PaisaPilot
+# PaisaPilot 💰
 
-**PaisaPilot** is a personal finance and expense-tracking web application built with React, JavaScript, Vite, Firebase Authentication, and Cloud Firestore. It helps users record income and expenses, manage budgets, review financial reports, and automate recurring transactions.
+### Smart Expense Tracking & Budget Insights
 
-## Live application
+PaisaPilot is a personal finance management web application designed to help users track income and expenses, manage budgets, monitor spending habits, and understand their financial health through visual reports and insights.
 
-- **Primary website:** <https://paisapilot-79e63.web.app>
-- **Additional website:** <https://paisapilotapp.web.app>
-- **GitHub repository:** <https://github.com/ItsPrincekumar03/PaisaPilot>
+🔗 **Live Demo:** https://paisapilotapp.web.app/dashboard
 
-Both websites are Firebase Hosting sites associated with the same Firebase project, `paisapilot-79e63`.
+## ✨ Features
 
-## Features
+- **Dashboard:** View financial summaries and key spending information.
+- **Income & Expense Tracking:** Record and manage financial transactions.
+- **Budget Management:** Create and monitor budgets to control spending.
+- **Reports & Analytics:** Visualize financial activity using interactive charts.
+- **Recurring Transactions:** Manage scheduled, repeating financial entries.
+- **User Authentication:** Register, log in, and access a personal account.
+- **Profile Management:** Manage personal profile information and preferences.
+- **Admin Panel:** Access administrative functionality based on assigned permissions.
+- **Data Export:** Export financial reports where supported by the application.
+- **Secure Database Access:** Use Firebase Authentication and Cloud Firestore security rules to protect user data.
+- **Responsive Interface:** Access the application on supported desktop and mobile browsers.
 
-- **Authentication and profiles:** User registration, login, profile management, and profile initialization.
-- **Transactions:** Record and manage income and expenses.
-- **Dashboard:** Review financial summaries and transaction activity.
-- **Budgets:** Create and manage monthly and category-based budgets.
-- **Reports and analytics:** Visualize financial activity and export reports where supported by the application.
-- **Recurring transactions:** Create, edit, pause, resume, and process recurring schedules, with deterministic occurrence IDs to help prevent duplicates.
-- **Administration:** Admin tools for user management and account suspension, protected by Firebase custom claims and Firestore rules.
-- **Responsive interface:** React-based application with lazy-loaded Reports and Admin routes.
+## 🛠️ Technology Stack
 
-## Technology stack
-
-| Area | Technology |
+| Technology | Purpose |
 |---|---|
-| Frontend | React, JavaScript (ES modules) |
-| Build tool | Vite |
-| Authentication | Firebase Authentication |
-| Database | Cloud Firestore |
-| Authorization | Firestore Security Rules and Firebase custom claims |
-| Charts | Chart.js |
-| PDF export | jsPDF |
-| CSV processing/export | PapaParse |
-| Hosting | Firebase Hosting |
-| Testing | Node.js test runner, Firebase Emulator and rules-unit-testing |
+| React | User interface |
+| JavaScript | Application logic |
+| Vite | Development server and production build |
+| Firebase Authentication | User authentication |
+| Cloud Firestore | Cloud database |
+| React Router | Client-side navigation |
+| Chart.js / React chart integration | Financial visualizations |
+| ESLint | Code quality checks |
+| Firebase Emulator Suite | Local Firebase development and testing |
 
-## Project setup
+## 📋 Prerequisites
 
-### Prerequisites
-
-Install the following before starting:
-
-- Node.js and npm
+- Node.js
+- npm
+- A Firebase project
 - Git
-- Firebase CLI
-- Java runtime if you plan to run the Firebase Emulator test suites
 
-### 1. Clone the repository
+## 🚀 Getting Started
 
-```powershell
+### 1. Clone the Repository
+
+```bash
 git clone https://github.com/ItsPrincekumar03/PaisaPilot.git
 cd PaisaPilot
 ```
 
-### 2. Install dependencies
+If your GitHub repository URL differs, replace the clone URL with the correct URL.
 
-```powershell
-npm ci
+### 2. Install Dependencies
+
+```bash
+npm install
 ```
 
-### 3. Configure Firebase environment variables
+### 3. Configure Firebase Environment Variables
 
-Create a local environment file using the repository's example:
+Create a `.env.local` file in the project root and configure the following variables using values from your Firebase web app:
 
-```powershell
-Copy-Item .env.example .env.local
+```env
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+VITE_FIREBASE_USE_EMULATOR=false
 ```
 
-Open `.env.local` and fill in the variable names and values documented in `.env.example` using the Firebase web app configuration for the `paisapilot-79e63` project.
+Replace the example values with your own Firebase configuration.
 
-Do not copy service-account credentials or Firebase Admin SDK private keys into frontend environment variables. Never commit `.env.local` or other files containing secrets.
+**Security:** Never commit `.env.local`, service-account credentials, private keys, or other secrets to GitHub.
 
-### 4. Start the development server
+### 4. Start the Development Server
 
-```powershell
+```bash
 npm run dev
 ```
 
-Use the local URL printed by Vite in the terminal.
+Open the local URL printed by Vite in your terminal.
 
-## Production build and local preview
+### 5. Build for Production
 
-Create an optimized production build:
-
-```powershell
+```bash
 npm run build
 ```
 
-Preview the generated build locally:
+The production files are generated in the `dist/` directory.
 
-```powershell
+### 6. Preview the Production Build
+
+```bash
 npm run preview
 ```
 
-The generated static site is written to `dist/`.
+Open the local preview URL printed by Vite.
 
-## Testing and quality checks
+## 🧪 Testing and Code Quality
 
-Run the unit tests:
+Run the available project checks:
 
-```powershell
-node --test tests/unit/*.test.js
-```
-
-Run all configured Firebase security and emulator suites:
-
-```powershell
+```bash
+npm run lint
 npm run test:rules
 ```
 
-Run linting:
+Firestore rules tests may require the Firebase Emulator Suite to be configured and running as expected by the project test setup.
 
-```powershell
-npm run lint
-```
+Check `package.json` for the complete list of available scripts.
 
-Build the production application:
+## 🔥 Firebase Configuration
 
-```powershell
-npm run build
-```
+Before deploying:
 
-The Firebase Emulator test command requires the Firebase CLI and a working Java runtime. Consult the Firebase Emulator documentation and the project's `firebase.json` for the configured emulator ports.
+1. Configure the Firebase web app and environment variables.
+2. Enable the authentication providers required by the application.
+3. Configure authorized domains for the production website.
+4. Review and test Firestore Security Rules.
+5. Deploy the required Firestore indexes.
+6. Verify that production builds do not connect to local emulators.
+7. Configure Firebase Hosting or another compatible hosting provider.
 
-## Firebase configuration
+Do not publish Firestore rules to production without reviewing the changes and confirming the intended access permissions.
 
-The repository is configured for Firebase project:
+## 📁 Project Structure
+
+The application is organized into feature-based frontend modules. Main areas include:
 
 ```text
-paisapilot-79e63
+PaisaPilot/
+├── docs/
+├── src/
+│   ├── app/
+│   ├── features/
+│   ├── lib/
+│   ├── pages/
+│   └── services/
+├── tests/
+├── public/
+├── dist/                 # Generated production build
+├── firebase.json
+├── firestore.rules
+├── firestore.indexes.json
+├── package.json
+├── vite.config.js
+└── README.md
 ```
 
-The Firebase configuration files include:
+The exact directories may vary as the project evolves. The `dist/` directory is generated by the production build and generally should not be committed.
 
-- `.firebaserc` — Firebase project selection and Hosting target mappings.
-- `firebase.json` — Hosting, Firestore and Emulator configuration.
-- `firestore.rules` — Firestore security rules.
-- `firestore.indexes.json` — Firestore index configuration.
+## 🔐 Security Notes
 
-### Multiple Firebase Hosting sites
+- Authentication and Firestore rules should enforce access permissions independently of frontend route guards.
+- Users should only access data they are authorized to view or modify.
+- Administrative permissions must be verified through trusted Firebase authorization claims and security rules.
+- Never expose private credentials or commit local environment files.
+- Test security rules before publishing changes to production.
 
-The project has two Hosting targets that serve the Vite production output in `dist/`:
+## 🌐 Deployment
 
-| Target | Site ID | URL |
-|---|---|---|
-| `main` | `paisapilot-79e63` | <https://paisapilot-79e63.web.app> |
-| `app` | `paisapilotapp` | <https://paisapilotapp.web.app> |
+PaisaPilot can be deployed to a static hosting provider compatible with Vite applications and client-side routing.
 
-Deploy only the additional `app` website:
+For Firebase Hosting, the production build uses `dist/` as its public directory. SPA rewrite rules should route client-side application paths to `index.html`.
 
-```powershell
-npm run build
-firebase deploy --only hosting:app --project paisapilot-79e63
-```
+After deployment, verify authentication, database access, reports, protected routes, and direct URL refresh behavior.
 
-Deploy only the original `main` website:
+## 🗺️ Future Improvements
 
-```powershell
-npm run build
-firebase deploy --only hosting:main --project paisapilot-79e63
-```
+- More detailed spending insights.
+- Enhanced budgeting recommendations.
+- Additional report filters.
+- Improved accessibility and mobile usability.
+- More comprehensive automated testing.
+- Additional export options, where supported.
 
-These commands deploy Hosting only. They do not deploy Firestore rules or indexes.
+## 🤝 Contributing
 
-### Firestore rules deployment
+Contributions and suggestions are welcome.
 
-Deploying security rules changes production access control. Review the local `firestore.rules`, compare it with the currently deployed rules, and run the relevant Emulator tests before deployment. Only an authorized maintainer should run:
+1. Fork the repository.
+2. Create a feature branch.
+3. Make and test your changes.
+4. Open a pull request describing your changes.
 
-```powershell
-firebase deploy --only firestore:rules --project paisapilot-79e63
-```
+Do not include secrets or unrelated generated files in contributions.
 
-Do not run a broad `firebase deploy` unless every configured Firebase resource is intentionally included in the release.
+## 📄 License
 
-> **Production rules status:** The reported deployment of `paisapilotapp.web.app` deployed Hosting only. That Hosting deployment did not publish the Module 12 Firestore rules. Verify the current production rules in the Firebase Console before assuming they match the repository.
-
-## Security notes
-
-- User data is organized under user-owned Firestore paths and protected by ownership checks.
-- Admin privileges are based on Firebase Authentication custom claims, not client-side UI checks alone.
-- Suspended users are restricted from creating, updating, or deleting recurring schedules under the Module 12 rules.
-- Owners can still increase `nextIndex`; the current monotonicity rule prevents decreasing it but does not prove that every advancement corresponds to processed occurrences.
-- Category existence and transaction/category type matching are not currently enforced server-side; this work was deferred.
-- Never expose service-account credentials or private keys in frontend code, `VITE_` variables, source control, or client bundles.
-
-## Known limitations and future work
-
-- Full-collection reads in some dashboard, reporting, budget, and admin flows may need pagination or query optimization as usage grows.
-- Server-side category existence and category/type validation remain future work.
-- Stronger protection against arbitrary forward changes to recurring `nextIndex` would require a trusted processing design, such as a suitably secured backend or Cloud Function.
-- Processing errors are not yet surfaced through a dedicated user-facing interface in all cases.
-
-## Contributing and Git workflow
-
-The Module 12 work was developed on the `feature/module-12` branch. Review the current branch and working tree before making changes:
-
-```powershell
-git branch --show-current
-git status --short --branch
-git log -1 --oneline
-```
-
-Use a feature branch for changes and run the tests before opening a pull request. Do not commit local environment files, credentials, generated secrets, or unrelated local artifacts.
-
-## Documentation
-
-Additional project documentation is available under `docs/`, including database setup, Firestore data model, security rules, testing, and administration information.
+A license has not been specified. Add a `LICENSE` file and name the selected license before presenting the project as open source.
 
 ---
 
-**PaisaPilot** — personal finance tracking with Firebase-backed data and reporting.
+**PaisaPilot — Understand your spending. Manage your budget. Build better financial habits.**
