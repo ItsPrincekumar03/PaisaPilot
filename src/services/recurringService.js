@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase.js';
 import { createServiceError, toServiceError } from '../lib/serviceError.js';
+import { isValidIsoDate } from '../utils/transactionFilters.js';
 import {
   MAX_CATCH_UP_PER_RUN,
   SCHEDULE_STATUS,
@@ -45,6 +46,12 @@ const WRITE_MESSAGES = {
   'not-found': 'This recurring schedule no longer exists. Refresh the list and try again.',
 };
 
+/**
+ * Fixed date used to satisfy the future-date rule inside validateTransactionValues.
+ * planScheduleRun already limits occurrence dates to todayIso, so the device clock is not used.
+ */
+const OCCURRENCE_CHECK_DATE = '2000-01-01';
+
 function requireOwner(ownerId) {
   if (typeof ownerId !== 'string' || ownerId.trim().length === 0) {
     throw createServiceError('auth/unauthenticated', 'You must be signed in to manage recurring schedules.');
@@ -55,9 +62,7 @@ function recurringCollection(ownerId) {
   return collection(db, 'users', ownerId, 'recurring');
 }
 
-function transactionsCollection(ownerId) {
-  return collection(db, 'users', ownerId, 'transactions');
-}
+
 
 function toPublicSchedule(id, data) {
   return {
@@ -75,6 +80,18 @@ function toPublicSchedule(id, data) {
     createdAt: data.createdAt?.toDate?.() ? data.createdAt.toDate().toISOString() : data.createdAt ?? null,
     updatedAt: data.updatedAt?.toDate?.() ? data.updatedAt.toDate().toISOString() : data.updatedAt ?? null,
   };
+}
+
+/**
+ * Checks one generated occurrence with the same rules as a manual transaction,
+ * except the clock-based future-date check (see OCCURRENCE_CHECK_DATE).
+ * Returns an error message, or null when the occurrence is valid.
+ */
+function getOccurrenceProblem(transaction) {
+  if (!isValidIsoDate(transaction.date)) {
+    return 'Enter a valid date.';
+  }
+  return validateTransactionValues({ ...transaction, date: OCCURRENCE_CHECK_DATE });
 }
 
 /**
@@ -151,6 +168,8 @@ export async function createRecurringSchedule(ownerId, input, categories = []) {
 
 /**
  * Updates an existing recurring schedule.
+ * The Firestore path reads the schedule inside a transaction, so nextIndex is always the
+ * current value. This keeps a concurrent processor run from being overwritten.
  */
 export async function updateRecurringSchedule(ownerId, scheduleId, input, categories = []) {
   requireOwner(ownerId);
@@ -164,33 +183,38 @@ export async function updateRecurringSchedule(ownerId, scheduleId, input, catego
   if (db) {
     const docRef = doc(recurringCollection(ownerId), scheduleId);
     try {
-      const existingSnap = await getDoc(docRef);
-      if (!existingSnap.exists()) {
-        throw createServiceError('recurring/not-found', WRITE_MESSAGES['not-found']);
-      }
-      const existing = existingSnap.data();
-
-      // If startDate or frequency changed, recompute next occurrence from nextIndex
-      let nextIndex = existing.nextIndex ?? 0;
-      let nextDate = existing.nextDate;
-      if (values.startDate !== existing.startDate || values.frequency !== existing.frequency) {
-        const candidate = getOccurrenceDate(values.startDate, values.frequency, nextIndex);
-        nextDate = values.endDate && candidate > values.endDate ? null : candidate;
-      } else if (values.endDate !== existing.endDate && nextDate) {
-        if (values.endDate && nextDate > values.endDate) {
-          nextDate = null;
+      return await runTransaction(db, async (txn) => {
+        const existingSnap = await txn.get(docRef);
+        if (!existingSnap.exists()) {
+          throw createServiceError('recurring/not-found', WRITE_MESSAGES['not-found']);
         }
-      }
+        const existing = existingSnap.data();
 
-      const updates = {
-        ...values,
-        nextIndex,
-        nextDate,
-        updatedAt: serverTimestamp(),
-      };
+        const nextIndex = existing.nextIndex ?? 0;
+        let nextDate = existing.nextDate ?? null;
+        if (values.startDate !== existing.startDate || values.frequency !== existing.frequency) {
+          const candidate = getOccurrenceDate(values.startDate, values.frequency, nextIndex);
+          nextDate = values.endDate && candidate > values.endDate ? null : candidate;
+        } else if (values.endDate !== existing.endDate && nextDate) {
+          if (values.endDate && nextDate > values.endDate) {
+            nextDate = null;
+          }
+        }
 
-      await updateDoc(docRef, updates);
-      return toPublicSchedule(scheduleId, { ...existing, ...updates, updatedAt: new Date().toISOString() });
+        const updates = {
+          ...values,
+          nextIndex,
+          nextDate,
+          updatedAt: serverTimestamp(),
+        };
+        txn.update(docRef, updates);
+
+        return toPublicSchedule(scheduleId, {
+          ...existing,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        });
+      });
     } catch (err) {
       throw toServiceError(err, WRITE_MESSAGES, 'Could not update recurring schedule.');
     }
@@ -273,8 +297,72 @@ export async function deleteRecurringSchedule(ownerId, scheduleId) {
 }
 
 /**
+ * Processes one schedule's due occurrences in a single Firestore transaction.
+ *
+ * - Every read happens before any write, as the Firestore SDK requires.
+ * - Existing occurrence documents are never overwritten.
+ * - If any due occurrence fails validation, the function throws before writing.
+ *   The transaction aborts, so no transaction is created and nextIndex does not move.
+ * - The transaction is atomic: a failure at any step leaves the data unchanged.
+ *
+ * Exported so the emulator tests can run this exact code path.
+ * Returns the transactions created by this run.
+ */
+export async function processScheduleOnServer(database, ownerId, schedule, todayIso, limit = MAX_CATCH_UP_PER_RUN) {
+  const scheduleRef = doc(collection(database, 'users', ownerId, 'recurring'), schedule.id);
+  const transactionsRef = collection(database, 'users', ownerId, 'transactions');
+
+  return runTransaction(database, async (txn) => {
+    const freshSnap = await txn.get(scheduleRef);
+    if (!freshSnap.exists() || freshSnap.data().status !== SCHEDULE_STATUS.ACTIVE) {
+      return [];
+    }
+
+    const freshPlan = planScheduleRun({ ...freshSnap.data(), id: schedule.id }, todayIso, limit);
+
+    // Phase 1: validate and read. Nothing is written yet.
+    const pending = [];
+    for (const item of freshPlan.items) {
+      const problem = getOccurrenceProblem(item.transaction);
+      if (problem) {
+        throw createServiceError(
+          'validation/recurring-occurrence',
+          `The occurrence on ${item.date} could not be created: ${problem} No transactions were saved for this schedule.`
+        );
+      }
+
+      const txDocRef = doc(transactionsRef, item.occurrenceId);
+      const existingTx = await txn.get(txDocRef);
+      if (!existingTx.exists()) {
+        pending.push({ item, txDocRef });
+      }
+    }
+
+    // Phase 2: writes, only after every read has completed.
+    for (const { item, txDocRef } of pending) {
+      txn.set(txDocRef, {
+        ...item.transaction,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    txn.update(scheduleRef, {
+      nextIndex: freshPlan.nextIndex,
+      nextDate: freshPlan.nextDate,
+      updatedAt: serverTimestamp(),
+    });
+
+    return pending.map(({ item }) => ({ id: item.occurrenceId, ...item.transaction }));
+  });
+}
+
+/**
  * Processes due occurrences for all active schedules up to todayIso,
  * creating corresponding transactions idempotently.
+ *
+ * A schedule that fails is logged and skipped. Its data is unchanged, and the other
+ * schedules are still processed.
  */
 export async function processDueRecurringSchedules(ownerId, todayIso, limit = MAX_CATCH_UP_PER_RUN) {
   requireOwner(ownerId);
@@ -290,46 +378,20 @@ export async function processDueRecurringSchedules(ownerId, todayIso, limit = MA
     }
 
     if (db) {
-      const scheduleRef = doc(recurringCollection(ownerId), schedule.id);
-
       try {
-        await runTransaction(db, async (txn) => {
-          const freshSnap = await txn.get(scheduleRef);
-          if (!freshSnap.exists() || freshSnap.data().status !== SCHEDULE_STATUS.ACTIVE) {
-            return;
-          }
-
-          const freshData = freshSnap.data();
-          const freshPlan = planScheduleRun({ ...freshData, id: schedule.id }, todayIso, limit);
-
-          for (const item of freshPlan.items) {
-            const problem = validateTransactionValues(item.transaction);
-            if (problem) continue;
-
-            const txDocRef = doc(transactionsCollection(ownerId), item.occurrenceId);
-            const existingTx = await txn.get(txDocRef);
-            if (!existingTx.exists()) {
-              txn.set(txDocRef, {
-                ...item.transaction,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              });
-              createdTransactions.push({ id: item.occurrenceId, ...item.transaction });
-            }
-          }
-
-          txn.update(scheduleRef, {
-            nextIndex: freshPlan.nextIndex,
-            nextDate: freshPlan.nextDate,
-            updatedAt: serverTimestamp(),
-          });
-        });
+        const created = await processScheduleOnServer(db, ownerId, schedule, todayIso, limit);
+        createdTransactions.push(...created);
       } catch (err) {
-        // Individual schedule failure logged without halting the entire processing loop
         console.error('Error processing recurring schedule:', schedule.id, err);
       }
     } else {
-      // In-memory fallback
+      // In-memory fallback. Every occurrence is validated before anything is saved.
+      const problem = plan.items.map((item) => getOccurrenceProblem(item.transaction)).find(Boolean);
+      if (problem) {
+        console.error('Recurring schedule was not processed:', schedule.id, problem);
+        continue;
+      }
+
       for (const item of plan.items) {
         createdTransactions.push({ id: item.occurrenceId, ...item.transaction });
       }

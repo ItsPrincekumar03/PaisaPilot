@@ -1,55 +1,65 @@
 # Firestore Data Model
 
-All private data lives under the owner's Firebase Auth UID. The UID comes from `request.auth.uid`, never from a client field.
+All private data lives under the owner's Firebase Auth UID. The UID comes from
+`request.auth.uid`, never from a client field.
 
 ## Collections
 
 | Path | Purpose | Document ID |
 |---|---|---|
 | `users/{uid}` | Profile and preferences | `uid` |
-| `users/{uid}/transactions/{id}` | Income and expense records | auto ID |
-| `users/{uid}/budgets/{YYYY-MM}` | One overall budget per month | `2026-10` |
-| `users/{uid}/categories/{id}` | Personal categories (reserved) | auto ID |
-| `categories/{id}` | Global categories, read-only to users | slug |
-| `auditLogs/{id}` | Trusted backend events only | auto ID |
+| `users/{uid}/transactions/{id}` | Income and expense records | Auto ID, or `{scheduleId}_{date}` for recurring occurrences |
+| `users/{uid}/budgets/{id}` | Category budgets (`YYYY-MM_categoryId`) | Composite ID |
+| `users/{uid}/recurring/{id}` | Recurring schedules | Auto ID |
+| `users/{uid}/categories/{id}` | Personal categories (reserved, unused) | Auto ID |
+| `categories/{id}` | Global categories, read-only to users | Slug |
+| `auditLogs/{id}` | Server-only events | Auto ID |
 
 ## Fields
 
-**users/{uid}**: `displayName` (string, max 80), `email` (must match sign-in email), `currency` (`"INR"`), `theme` (`light`, `dark`, or `system`), `accountStatus` (`active`, set by trusted code only), `createdAt`, `updatedAt`.
+**users/{uid}**: `displayName` (1 to 80 characters), `email` (must equal the sign-in email),
+`currency` (`INR`, `USD`, `EUR`, `GBP`), `theme` (`light`, `dark`, `system`), `language`
+(`en`, optional), `accountStatus` (`active` or `suspended`), `createdAt`, `updatedAt`.
 
-**transactions**: `type` (`income` or `expense`), `amountPaise` (positive integer), `categoryId` (string, max 64), `date` (`YYYY-MM-DD`), `description` (1 to 200 characters), `createdAt`, `updatedAt`.
+**transactions**: `type` (`income` or `expense`), `amountPaise` (positive integer, up to
+1,000,000,000), `categoryId` (text up to 64 characters), `date` (`YYYY-MM-DD`),
+`description` (1 to 200 characters), `createdAt`, `updatedAt`.
 
-**budgets**: `monthKey` (must equal the document ID), `limitPaise` (positive integer), `createdAt`, `updatedAt`.
+**budgets**: `monthKey` (`YYYY-MM`), `categoryId`, `limitPaise` (positive integer),
+`createdAt`, `updatedAt`. The document ID must equal `monthKey_categoryId`.
 
-**categories**: `name`, `type`, `color` (`#RRGGBB`), `icon`, `active` (boolean), `createdAt`, `updatedAt`.
+**recurring**: `type`, `amountPaise`, `categoryId`, `description`, `frequency` (`daily`,
+`weekly`, `monthly`, `yearly`), `startDate`, `endDate` (`null` or a date on or after the
+start date), `status` (`active`, `paused`, `cancelled`), `nextIndex` (integer, zero or
+more), `nextDate` (`null` or a date), `createdAt`, `updatedAt`.
 
-## Money rules
-Amounts are integers in paise. Convert to rupees only for display (`src/utils/currency.js`).
+## Recurring occurrences
 
-## Timestamps
-Clients send `serverTimestamp()` for `createdAt` and `updatedAt`. The rules require the value to equal `request.time`.
+Each due occurrence becomes a transaction with the document ID `{scheduleId}_{date}`.
+The same occurrence therefore cannot be created twice. An existing occurrence document is
+never overwritten. Processing runs in one Firestore transaction. If any occurrence fails
+validation, nothing is written and `nextIndex` does not move.
+
+## Money and timestamps
+
+Amounts are integers in paise. Convert to rupees only for display.
+
+Clients send `serverTimestamp()` for `createdAt` and `updatedAt`. The rules require the
+value to equal `request.time`. `createdAt` cannot change after creation.
+
+## Profile creation
+
+The profile is created during registration, through `createProfileIfMissing`, using
+the signed-in user's own uid and token email. A missing profile on login is reported,
+not created. The user can then choose "Finish setup".
 
 ## Known gaps (deferred)
-- The rules do not check that `categoryId` exists or that its type matches the transaction. This needs a `get()` lookup, which Module 5 will add when real categories exist.
-- Transaction queries by date and type will need composite indexes in Module 5.
-- Account deletion must remove subcollections through trusted code. Module 3 or 10 will implement this.
-## User profile (Module 4)
 
-Document: users/{uid}, where uid is the signed-in Firebase Auth UID.
-
-| Field | Type | Who writes it | Notes |
-|---|---|---|---|
-| displayName | string, 1 to 80 characters | user | Trimmed before save |
-| email | string | created from Auth | Must equal the sign-in email. Read-only in the app |
-| currency | INR, USD, EUR, GBP | user | Display preference only. Stored amounts are never converted |
-| theme | light, dark, system | user | Saved only. Not applied yet |
-| language | en (optional) | user | Saved only. Only English exists |
-| accountStatus | ctive | created by the app as ctive, locked after creation | Suspension enforcement is planned for Module 10 |
-| createdAt | timestamp | server | Locked after creation |
-| updatedAt | timestamp | server | Required on every write |
-
-Not stored: passwords, tokens, roles, admin flags, photo URLs, or any transaction or budget data.
-
-Profile creation: ensureUserProfile runs when the user first opens /profile. It uses a transaction so the document is created only once.
-
-Limitations: currency conversion, global theme switching, and full localization are not implemented.
+- Category existence and category/type matching are not enforced server-side. This needs
+  a verified category migration first.
+- Account deletion is not implemented.
+- Personal categories are reserved and unused.
+- Full-collection reads: dashboard, reports, budgets and the admin user list load all
+  documents and filter in memory. Not paginated.
+- No composite indexes are needed. Every current query is either a single-field `orderBy`
+  or unfiltered. `firestore.indexes.json` stays empty until a filtered query is added.

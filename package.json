@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/security/firestore.rules.test.js\""
+    "test:rules": "firebase emulators:exec --only firestore \"node --test --test-concurrency=1 tests/security/firestore.rules.test.js tests/security/profile.rules.test.js tests/security/transactions.rules.test.js tests/security/recurring.rules.test.js tests/security/recurring.processing.test.js tests/security/profile.initialization.test.js\""
   },
   "dependencies": {
     "chart.js": "^4.6.1",

@@ -41,6 +41,7 @@ function toProfileView(data) {
     currency: data.currency ?? DEFAULT_PREFERENCES.currency,
     theme: data.theme ?? DEFAULT_PREFERENCES.theme,
     language: data.language ?? DEFAULT_PREFERENCES.language,
+    accountStatus: data.accountStatus ?? null,
     createdAt: data.createdAt?.toDate?.() ?? null,
     updatedAt: data.updatedAt?.toDate?.() ?? null,
   };
@@ -52,33 +53,40 @@ function defaultDisplayName(user) {
   return (fromAccount || fromEmail).slice(0, DISPLAY_NAME_MAX_LENGTH) || 'PaisaPilot user';
 }
 
-export async function ensureUserProfile(user) {
+/**
+ * Creates users/{uid} only when no document exists. An existing document is returned
+ * unchanged. New profiles are always created as active. Only an administrator can suspend
+ * an account, and this code never writes accountStatus on an existing profile.
+ *
+ * Used by registration (AuthProvider.registerAccount) and by the explicit "Finish setup"
+ * recovery step. Never called automatically on login.
+ *
+ * The database is a parameter so emulator tests can run this exact code path.
+ * The rules enforce that a user can create only their own profile, with their token email.
+ */
+export async function createProfileIfMissing(database, user) {
+  if (!database) {
+    return fail('config/unconfigured', 'Firebase is not configured, so your profile is unavailable.');
+  }
   if (!user?.uid || typeof user.email !== 'string' || !user.email) {
     return fail('profile/no-user', 'No signed-in user was found.');
   }
 
-  const accessError = checkAccess(user.uid);
-  if (accessError) {
-    return accessError;
-  }
+  const ref = doc(database, 'users', user.uid);
 
-  const ref = doc(db, 'users', user.uid);
-
-  // Quick check: if the document already exists, return it directly without running a transaction.
   try {
     const existingSnap = await getDoc(ref);
     if (existingSnap.exists()) {
       return { ok: true, created: false, profile: toProfileView(existingSnap.data()) };
     }
   } catch (err) {
-    // If getDoc fails due to permission or network, let fromFirestoreError handle it or proceed to transaction
     if (err?.code === 'permission-denied' || err?.code === 'unavailable') {
       return fromFirestoreError(err);
     }
   }
 
   try {
-    return await runTransaction(db, async (transaction) => {
+    return await runTransaction(database, async (transaction) => {
       const snapshot = await transaction.get(ref);
 
       if (snapshot.exists()) {
@@ -105,7 +113,7 @@ export async function ensureUserProfile(user) {
       };
     });
   } catch (error) {
-    // If a concurrent request or race condition already created the document, safely fetch and return it.
+    // A concurrent request may have created the document. Return it if so.
     if (error?.code === 'already-exists' || error?.code === 'failed-precondition') {
       try {
         const fallbackSnap = await getDoc(ref);
@@ -113,11 +121,41 @@ export async function ensureUserProfile(user) {
           return { ok: true, created: false, profile: toProfileView(fallbackSnap.data()) };
         }
       } catch {
-        // Fall through to fromFirestoreError
+        // Fall through to the error below.
       }
     }
     return fromFirestoreError(error);
   }
+}
+
+/**
+ * Read-only. Never creates or modifies a document.
+ * Returns { ok: true, profile } or { ok: false, code: 'profile/not-found' | ... }.
+ */
+export async function readUserProfile(database, uid) {
+  if (!database) {
+    return fail('config/unconfigured', 'Firebase is not configured, so your profile is unavailable.');
+  }
+  try {
+    const snap = await getDoc(doc(database, 'users', uid));
+    if (!snap.exists()) {
+      return fail('profile/not-found', FIRESTORE_MESSAGES['not-found']);
+    }
+    return { ok: true, created: false, profile: toProfileView(snap.data()) };
+  } catch (error) {
+    return fromFirestoreError(error);
+  }
+}
+
+/**
+ * Read-only wrapper for the signed-in user. Used by AuthProvider and the Profile page.
+ */
+export async function getUserProfile(uid) {
+  const accessError = checkAccess(uid);
+  if (accessError) {
+    return accessError;
+  }
+  return readUserProfile(db, uid);
 }
 
 export async function updateUserProfile(uid, input) {

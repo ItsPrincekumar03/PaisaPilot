@@ -14,7 +14,7 @@ import {
   hasProfileChanges,
   validateProfileUpdates,
 } from '../../features/profile/profileValidation.js';
-import { ensureUserProfile, updateUserProfile } from '../../services/profile.service.js';
+import { getUserProfile, updateUserProfile } from '../../services/profile.service.js';
 import '../../styles/profile.css';
 
 const dateFormatter = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -56,7 +56,7 @@ function ProfileContent({ user }) {
   useEffect(() => {
     let isActive = true;
 
-    ensureUserProfile(user).then((result) => {
+    getUserProfile(user.uid).then((result) => {
       if (!isActive) {
         return;
       }

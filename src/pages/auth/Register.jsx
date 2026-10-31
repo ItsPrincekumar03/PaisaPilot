@@ -3,13 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from './AuthLayout.jsx';
 import FormField from '../../components/forms/FormField.jsx';
 import PasswordField from '../../components/forms/PasswordField.jsx';
-import { registerWithEmail } from '../../services/auth.service.js';
 import { PASSWORD_MIN_LENGTH, validateEmail, validatePassword } from '../../features/auth/authValidation.js';
 import { useAuth } from '../../features/auth/useAuth.js';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { isConfigured } = useAuth();
+  const { isConfigured, registerAccount } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,7 +39,9 @@ export default function Register() {
     }
 
     setIsSubmitting(true);
-    const result = await registerWithEmail(email, password);
+
+    // Creates the account and its profile as one step (see AuthProvider.registerAccount).
+    const result = await registerAccount(email, password);
 
     if (!result.ok) {
       setFormError(result.message);
@@ -48,8 +49,6 @@ export default function Register() {
       return;
     }
 
-    // Successful registration signs the user in. The route change follows the auth state.
-    // The Firestore profile is created in Module 4, not here.
     navigate('/dashboard', { replace: true });
   }
 
