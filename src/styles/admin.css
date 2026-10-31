@@ -50,17 +50,17 @@
 }
 
 .admin-metric-card__value {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: 700;
   color: var(--color-text);
 }
 
 .admin-metric-card__value--active {
-  color: #10b981;
+  color: var(--color-income-text);
 }
 
 .admin-metric-card__value--suspended {
-  color: #ef4444;
+  color: var(--color-expense-text);
 }
 
 .admin-controls {
@@ -89,7 +89,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
-  background: var(--color-background);
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
@@ -111,14 +111,14 @@
 }
 
 .admin-filter-btn:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
 .admin-filter-btn--active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-surface);
   font-weight: 600;
 }
 
@@ -138,7 +138,7 @@
 
 .admin-table th {
   padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-hover);
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-weight: 600;
@@ -157,7 +157,7 @@
 }
 
 .admin-table tr:hover td {
-  background: var(--color-surface-hover);
+  background: var(--color-bg);
 }
 
 .admin-user-cell {
@@ -171,14 +171,14 @@
 }
 
 .admin-user-email {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 .admin-uid-badge {
   font-family: monospace;
-  font-size: var(--font-size-xs);
-  background: var(--color-surface-hover);
+  font-size: var(--font-size-sm);
+  background: var(--color-bg);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
@@ -188,24 +188,24 @@
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   text-transform: capitalize;
 }
 
 .admin-status-badge--active {
-  background: #d1fae5;
-  color: #065f46;
+  background: color-mix(in srgb, var(--color-income) 15%, var(--color-surface));
+  color: var(--color-income-text);
 }
 
 .admin-status-badge--suspended {
-  background: #fee2e2;
-  color: #991b1b;
+  background: color-mix(in srgb, var(--color-expense) 15%, var(--color-surface));
+  color: var(--color-expense-text);
 }
 
 .admin-self-badge {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   color: var(--color-primary);
   font-weight: 600;
   margin-left: var(--space-2);
@@ -213,7 +213,7 @@
 
 .admin-action-btn {
   padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
@@ -222,25 +222,25 @@
 }
 
 .admin-action-btn--suspend {
-  background: #fee2e2;
-  color: #b91c1c;
-  border-color: #fca5a5;
+  background: color-mix(in srgb, var(--color-expense) 15%, var(--color-surface));
+  color: var(--color-expense-text);
+  border-color: var(--color-expense);
 }
 
 .admin-action-btn--suspend:hover:not(:disabled) {
-  background: #fecaca;
-  color: #991b1b;
+  background: color-mix(in srgb, var(--color-expense) 25%, var(--color-surface));
+  color: var(--color-expense-text);
 }
 
 .admin-action-btn--restore {
-  background: #d1fae5;
-  color: #047857;
-  border-color: #6ee7b7;
+  background: color-mix(in srgb, var(--color-income) 15%, var(--color-surface));
+  color: var(--color-income-text);
+  border-color: var(--color-income);
 }
 
 .admin-action-btn--restore:hover:not(:disabled) {
-  background: #a7f3d0;
-  color: #065f46;
+  background: color-mix(in srgb, var(--color-income) 25%, var(--color-surface));
+  color: var(--color-income-text);
 }
 
 .admin-action-btn:disabled {
@@ -293,7 +293,7 @@
 }
 
 .admin-modal__user-summary {
-  background: var(--color-surface-hover);
+  background: var(--color-bg);
   padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
@@ -305,7 +305,7 @@
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface-hover);
+  background: var(--color-bg);
 }
 
 .admin-banner {
@@ -315,13 +315,22 @@
 }
 
 .admin-banner--success {
-  background: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
+  background: color-mix(in srgb, var(--color-income) 10%, var(--color-surface));
+  color: var(--color-income-text);
+  border: 1px solid color-mix(in srgb, var(--color-income) 25%, var(--color-surface));
 }
 
 .admin-banner--error {
-  background: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background: color-mix(in srgb, var(--color-expense) 10%, var(--color-surface));
+  color: var(--color-expense-text);
+  border: 1px solid color-mix(in srgb, var(--color-expense) 25%, var(--color-surface));
+}
+
+.admin-modal .button--primary {
+  background: var(--color-primary);
+  color: var(--color-surface);
+}
+
+.admin-modal .button--primary:hover {
+  background: var(--color-primary-strong);
 }

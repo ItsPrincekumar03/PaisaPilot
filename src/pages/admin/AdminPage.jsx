@@ -136,8 +136,7 @@ export default function AdminPage() {
       <ErrorState
         title="Admin Dashboard Error"
         message={loadError}
-        actionLabel="Retry"
-        onAction={loadData}
+        onRetry={loadData}
       />
     );
   }
