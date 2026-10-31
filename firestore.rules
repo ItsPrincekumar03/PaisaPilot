@@ -245,21 +245,25 @@ service cloud.firestore {
         allow delete: if isActiveUser(userId);
       }
       // ---------- Recurring Schedules ----------
+      // Suspended accounts cannot create, edit, or delete schedules (Module 12).
+      // nextIndex may only increase, so a client cannot replay occurrences by moving it back.
+      // Admins have no access to recurring data.
 
       match /recurring/{scheduleId} {
         allow read: if isOwner(userId);
 
-        allow create: if isOwner(userId)
+        allow create: if isActiveUser(userId)
           && isValidRecurringSchedule(request.resource.data)
           && request.resource.data.createdAt == request.time
           && request.resource.data.updatedAt == request.time;
 
-        allow update: if isOwner(userId)
+        allow update: if isActiveUser(userId)
           && isValidRecurringSchedule(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.updatedAt == request.time;
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.nextIndex >= resource.data.nextIndex;
 
-        allow delete: if isOwner(userId);
+        allow delete: if isActiveUser(userId);
       }
 
       // ---------- Personal categories (reserved for future use) ----------

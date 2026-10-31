@@ -2,6 +2,17 @@
   "projects": {
     "default": "paisapilot-79e63"
   },
-  "targets": {},
+  "targets": {
+    "paisapilot-79e63": {
+      "hosting": {
+        "main": [
+          "paisapilot-79e63"
+        ],
+        "app": [
+          "paisapilotapp"
+        ]
+      }
+    }
+  },
   "etags": {}
 }
