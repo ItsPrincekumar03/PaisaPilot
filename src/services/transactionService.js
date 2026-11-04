@@ -38,14 +38,40 @@ export async function fetchTransactions({ mode = 'active' } = {}) {
   };
 }
 
-export function createTransaction(input) {
-  return saveNewTransaction(input);
+const transactionListeners = new Set();
+
+export function onTransactionsChanged(listener) {
+  if (typeof listener !== 'function') return () => {};
+  transactionListeners.add(listener);
+  return () => {
+    transactionListeners.delete(listener);
+  };
 }
 
-export function updateTransaction(id, input) {
-  return saveTransactionChanges(id, input);
+function notifyTransactionChange() {
+  for (const listener of transactionListeners) {
+    try {
+      listener();
+    } catch {
+      // Safe dispatch to avoid crashing callers
+    }
+  }
 }
 
-export function deleteTransaction(id) {
-  return removeTransaction(id);
+export async function createTransaction(input) {
+  const result = await saveNewTransaction(input);
+  notifyTransactionChange();
+  return result;
+}
+
+export async function updateTransaction(id, input) {
+  const result = await saveTransactionChanges(id, input);
+  notifyTransactionChange();
+  return result;
+}
+
+export async function deleteTransaction(id) {
+  const result = await removeTransaction(id);
+  notifyTransactionChange();
+  return result;
 }

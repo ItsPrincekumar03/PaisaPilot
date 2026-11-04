@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createBudget, deleteBudget, listBudgets, updateBudget } from '../services/budgetService.js';
 import { loadBudgetSourceData } from '../services/budgetTransactionAdapter.js';
+import { onTransactionsChanged } from '../services/transactionService.js';
 import { buildCategoryBudgetRows, buildMonthlyHistory, summarizeBudgetRows } from '../utils/budgetCalculations.js';
 
 export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId }) {
@@ -14,6 +15,12 @@ export default function useBudgetManager({ monthKey, historyMonthKeys, ownerId }
   });
   const [reloadKey, setReloadKey] = useState(0);
   const [notice, setNotice] = useState(null);
+
+  useEffect(() => {
+    return onTransactionsChanged(() => {
+      setReloadKey((key) => key + 1);
+    });
+  }, []);
 
   useEffect(() => {
     let isActive = true;

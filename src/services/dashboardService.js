@@ -12,22 +12,22 @@ import {
   sortByDateDesc,
   sumByType,
 } from '../utils/financeCalculations.js';
-import { formatMonthLabel, getRecentMonthKeys } from '../utils/dates.js';
+import {
+  formatMonthLabel,
+  getCurrentMonthKey,
+  getMonthKeyRange,
+  getRecentMonthKeys,
+} from '../utils/dates.js';
+import { getPlannedMonthlyBudgetPaise } from '../utils/budgetCalculations.js';
 import { listTransactions } from './transactionRepository.js';
+import { listBudgets } from './budgetService.js';
+import { auth } from '../lib/firebase.js';
 
 const MOCK_DELAY_MS = 200;
 
-export const AVAILABLE_MONTH_KEYS = [
-  '2026-10',
-  '2026-09',
-  '2026-08',
-  '2026-07',
-  '2026-06',
-  '2026-05',
-];
-
-export function getAvailablePeriods() {
-  return AVAILABLE_MONTH_KEYS.map((key) => ({
+export function getAvailablePeriods(anchorMonthKey = getCurrentMonthKey()) {
+  const keys = getMonthKeyRange(anchorMonthKey, { pastCount: 5, futureCount: 1 }).reverse();
+  return keys.map((key) => ({
     key,
     label: formatMonthLabel(key),
   }));
@@ -47,7 +47,7 @@ function buildEmptyPayload(monthKey) {
   return {
     monthKey,
     monthLabel: formatMonthLabel(monthKey),
-    availablePeriods: getAvailablePeriods(),
+    availablePeriods: getAvailablePeriods(monthKey),
     isDemo: false,
     isEmpty: true,
     summary: {
@@ -86,7 +86,7 @@ function buildPayload({ monthKey, transactions, isDemo, isEmpty, budgetLimitPais
   return {
     monthKey,
     monthLabel: formatMonthLabel(monthKey),
-    availablePeriods: getAvailablePeriods(),
+    availablePeriods: getAvailablePeriods(monthKey),
     isDemo,
     isEmpty,
     summary: {
@@ -111,15 +111,21 @@ function buildPayload({ monthKey, transactions, isDemo, isEmpty, budgetLimitPais
   };
 }
 
-export async function fetchDashboardData({ monthKey = DEMO_MONTH_KEY, mode = 'active' } = {}) {
+export async function fetchDashboardData({ monthKey = getCurrentMonthKey(), mode = 'active', ownerId = null } = {}) {
   if (mode === 'active') {
-    const transactions = await listTransactions();
+    const effectiveUid = ownerId || auth?.currentUser?.uid;
+    const [transactions, budgets] = await Promise.all([
+      listTransactions(),
+      effectiveUid ? listBudgets(effectiveUid).catch(() => []) : Promise.resolve([]),
+    ]);
+    const budgetLimitPaise = getPlannedMonthlyBudgetPaise(budgets, monthKey);
+
     return buildPayload({
       monthKey,
       transactions,
       isDemo: false,
       isEmpty: transactions.length === 0,
-      budgetLimitPaise: 0,
+      budgetLimitPaise,
     });
   }
 

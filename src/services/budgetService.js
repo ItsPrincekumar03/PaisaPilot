@@ -59,7 +59,8 @@ function toPublicRecord(record) {
   return {
     id: record.id,
     monthKey: record.monthKey,
-    categoryId: record.categoryId,
+    categoryId: record.categoryId ?? null,
+    isOverall: Boolean(record.isOverall),
     limitPaise: record.limitPaise,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -75,11 +76,13 @@ export async function listBudgets(ownerId) {
       const budgets = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data && typeof data.categoryId === 'string' && data.monthKey && Number.isSafeInteger(data.limitPaise)) {
+        if (data && data.monthKey && Number.isSafeInteger(data.limitPaise)) {
+          const isCategory = typeof data.categoryId === 'string' && data.categoryId.length > 0;
           budgets.push({
             id: docSnap.id,
             monthKey: data.monthKey,
-            categoryId: data.categoryId,
+            categoryId: isCategory ? data.categoryId : null,
+            isOverall: !isCategory,
             limitPaise: data.limitPaise,
             createdAt: data.createdAt?.toDate?.() ? data.createdAt.toDate().toISOString() : data.createdAt ?? null,
             updatedAt: data.updatedAt?.toDate?.() ? data.updatedAt.toDate().toISOString() : data.updatedAt ?? null,

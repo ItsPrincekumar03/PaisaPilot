@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import '../../styles/budgets.css';
 import EmptyState from '../../components/common/EmptyState.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
@@ -12,22 +12,31 @@ import BudgetHistory from '../../components/budgets/BudgetHistory.jsx';
 import DeleteBudgetDialog from '../../components/budgets/DeleteBudgetDialog.jsx';
 import useBudgetManager from '../../hooks/useBudgetManager.js';
 import { useAuth } from '../../features/auth/useAuth.js';
-import { DEMO_MONTH_KEY } from '../../data/demoData.js';
 import { BUDGET_HISTORY_MONTH_COUNT } from '../../utils/budgetConstants.js';
 import { buildBudgetInsights } from '../../utils/budgetCalculations.js';
-import { formatMonthLabel, getRecentMonthKeys } from '../../utils/dates.js';
-
-const MONTH_KEYS_NEWEST_FIRST = getRecentMonthKeys(DEMO_MONTH_KEY, BUDGET_HISTORY_MONTH_COUNT).reverse();
-const PERIODS = MONTH_KEYS_NEWEST_FIRST.map((key) => ({ key, label: formatMonthLabel(key) }));
+import { formatMonthLabel, getCurrentMonthKey, getMonthKeyRange } from '../../utils/dates.js';
 
 export default function BudgetPage() {
   const { user } = useAuth();
   const ownerId = user?.uid;
-  const [selectedMonthKey, setSelectedMonthKey] = useState(DEMO_MONTH_KEY);
+  const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(currentMonthKey);
   const [formState, setFormState] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Allow browsing past months and planning ahead for next month (chronological, newest first in dropdown)
+  const monthKeysNewestFirst = useMemo(() => {
+    return getMonthKeyRange(currentMonthKey, {
+      pastCount: BUDGET_HISTORY_MONTH_COUNT - 1,
+      futureCount: 1,
+    }).reverse();
+  }, [currentMonthKey]);
+
+  const periods = useMemo(() => {
+    return monthKeysNewestFirst.map((key) => ({ key, label: formatMonthLabel(key) }));
+  }, [monthKeysNewestFirst]);
 
   const {
     status,
@@ -44,7 +53,7 @@ export default function BudgetPage() {
     removeBudget,
   } = useBudgetManager({
     monthKey: selectedMonthKey,
-    historyMonthKeys: MONTH_KEYS_NEWEST_FIRST,
+    historyMonthKeys: monthKeysNewestFirst,
     ownerId,
   });
 
@@ -84,7 +93,7 @@ export default function BudgetPage() {
             <p>Set a monthly limit for each expense category and see how much you have used.</p>
           </div>
           <PeriodSelector
-            periods={PERIODS}
+            periods={periods}
             selectedPeriod={selectedMonthKey}
             onSelectPeriod={setSelectedMonthKey}
             disabled={status === 'loading'}

@@ -47,6 +47,12 @@ export default function BudgetForm({
     <form className="budget-form" onSubmit={handleSubmit} noValidate>
       <p className="budget-field__static">Month: {monthLabel}</p>
 
+      {noOptions && (
+        <p className="budget-field__hint" role="status">
+          All available expense categories already have budgets for this month. You can edit an existing budget from the list below.
+        </p>
+      )}
+
       {isEdit ? (
         <div className="budget-field">
           <p className="budget-field__static">Category: {initialBudget.categoryName}</p>

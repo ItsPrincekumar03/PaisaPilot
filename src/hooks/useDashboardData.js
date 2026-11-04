@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { DEMO_MONTH_KEY } from '../data/demoData.js';
+import { useAuth } from '../features/auth/useAuth.js';
+import { getCurrentMonthKey } from '../utils/dates.js';
 import { fetchDashboardData } from '../services/dashboardService.js';
+import { onTransactionsChanged } from '../services/transactionService.js';
 
 export function useDashboardData() {
-  const [selectedMonthKey, setSelectedMonthKey] = useState(DEMO_MONTH_KEY);
+  const { user } = useAuth();
+  const ownerId = user?.uid ?? null;
+  const [selectedMonthKey, setSelectedMonthKey] = useState(getCurrentMonthKey);
   const [viewMode, setViewMode] = useState('active');
   const [status, setStatus] = useState('loading');
   const [data, setData] = useState(null);
@@ -15,11 +19,17 @@ export function useDashboardData() {
   }, []);
 
   useEffect(() => {
+    return onTransactionsChanged(() => {
+      setReloadIndex((previous) => previous + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     let isCancelled = false;
     setStatus('loading');
     setError(null);
 
-    fetchDashboardData({ monthKey: selectedMonthKey, mode: viewMode })
+    fetchDashboardData({ monthKey: selectedMonthKey, mode: viewMode, ownerId })
       .then((result) => {
         if (!isCancelled) {
           setData(result);
@@ -36,7 +46,7 @@ export function useDashboardData() {
     return () => {
       isCancelled = true;
     };
-  }, [selectedMonthKey, viewMode, reloadIndex]);
+  }, [selectedMonthKey, viewMode, ownerId, reloadIndex]);
 
   return {
     status,

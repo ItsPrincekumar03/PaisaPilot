@@ -22,7 +22,7 @@ export function buildCategoryBudgetRows({ budgets, transactions, categories, mon
   const categoryById = new Map(categories.map((category) => [category.id, category]));
 
   return budgets
-    .filter((budget) => budget.monthKey === monthKey)
+    .filter((budget) => budget.monthKey === monthKey && Boolean(budget.categoryId))
     .map((budget) => {
       const category = categoryById.get(budget.categoryId);
       const spentPaise = spentByCategory.get(budget.categoryId) ?? 0;
@@ -136,4 +136,20 @@ export function buildBudgetInsights({ rows, summary, monthLabel }) {
   }
 
   return insights;
+}
+
+/**
+ * Resolves the planned monthly budget limit in paise for a given monthKey.
+ * If category budgets exist for the month, sums their limits.
+ * If only a legacy overall budget exists (no categoryId), returns that limit.
+ * Does not double-count overall and category budgets.
+ */
+export function getPlannedMonthlyBudgetPaise(budgets = [], monthKey) {
+  const monthBudgets = (Array.isArray(budgets) ? budgets : []).filter((b) => b && b.monthKey === monthKey);
+  const categoryBudgets = monthBudgets.filter((b) => Boolean(b.categoryId));
+  if (categoryBudgets.length > 0) {
+    return categoryBudgets.reduce((sum, b) => sum + (Number.isSafeInteger(b.limitPaise) ? b.limitPaise : 0), 0);
+  }
+  const overallBudget = monthBudgets.find((b) => !b.categoryId && Number.isSafeInteger(b.limitPaise));
+  return overallBudget ? overallBudget.limitPaise : 0;
 }
